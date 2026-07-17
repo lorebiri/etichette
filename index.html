@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generatore Etichette GHS/CLP</title>
+<style>
+  :root{
+    --rosso:#c8102e; --blu:#1d3557; --grigio:#f4f5f7; --bordo:#d8dce3;
+    --testo:#22272e; --ok:#2a7d4f;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:"Segoe UI", system-ui, -apple-system, Arial, sans-serif; color:var(--testo); background:var(--grigio); line-height:1.45;}
+  header{background:var(--blu); color:#fff; padding:18px 24px;}
+  header h1{font-size:1.35rem; font-weight:600;}
+  header p{opacity:.85; font-size:.9rem; margin-top:2px;}
+  main{max-width:1100px; margin:0 auto; padding:20px 16px 60px;}
+
+  /* Stepper */
+  .stepper{display:flex; gap:6px; margin:14px 0 22px; flex-wrap:wrap;}
+  .stepper button{flex:1 1 180px; border:1px solid var(--bordo); background:#fff; padding:10px 12px; border-radius:8px; cursor:pointer; font-size:.9rem; text-align:left;}
+  .stepper button .num{display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--bordo); color:#555; text-align:center; line-height:22px; font-weight:700; margin-right:8px; font-size:.8rem;}
+  .stepper button.active{border-color:var(--blu); box-shadow:0 0 0 2px rgba(29,53,87,.15);}
+  .stepper button.active .num{background:var(--blu); color:#fff;}
+  .stepper button.done .num{background:var(--ok); color:#fff;}
+
+  .card{background:#fff; border:1px solid var(--bordo); border-radius:10px; padding:22px; margin-bottom:18px;}
+  .card h2{font-size:1.1rem; margin-bottom:4px; color:var(--blu);}
+  .card .hint{font-size:.87rem; color:#5a6472; margin-bottom:16px;}
+  .step{display:none;}
+  .step.visible{display:block;}
+
+  label.fld{display:block; font-size:.85rem; font-weight:600; margin:12px 0 4px;}
+  input[type=text], input[type=number], input[type=date], select, textarea{
+    width:100%; padding:8px 10px; border:1px solid var(--bordo); border-radius:6px; font-size:.95rem; background:#fff;}
+  .row{display:flex; gap:14px; flex-wrap:wrap;}
+  .row > div{flex:1 1 220px;}
+
+  .avviso{background:#fff8e6; border:1px solid #f0d48a; border-radius:8px; padding:10px 14px; font-size:.85rem; margin:14px 0;}
+  .avviso.blu{background:#eef4fb; border-color:#b9d2ee;}
+  .avviso.verde{background:#eaf6ef; border-color:#a8d8bc;}
+
+  /* elenco risultati ricerca */
+  .preset-list{max-height:300px; overflow-y:auto; border:1px solid var(--bordo); border-radius:8px; margin-top:6px; background:#fff;}
+  .preset-list div{padding:8px 12px; cursor:pointer; border-bottom:1px solid #eef0f3; font-size:.9rem; display:flex; justify-content:space-between; gap:10px; align-items:center;}
+  .preset-list div:hover{background:#eef4fb;}
+  .preset-list .cas{color:#778; font-size:.8rem;}
+  .badge{font-size:.68rem; font-weight:700; padding:2px 8px; border-radius:10px; white-space:nowrap;}
+  .badge.loc{background:#eaf6ef; color:#2a7d4f;}
+  .badge.pub{background:#eef4fb; color:#1d5fa7;}
+  .stato-ricerca{font-size:.85rem; margin-top:8px; color:#5a6472; min-height:1.3em;}
+  .coda-item{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:6px 10px; border:1px solid var(--bordo); border-radius:6px; margin-top:6px; font-size:.85rem; background:#fff;}
+  .coda-item button{border:none; background:none; color:#b3261e; cursor:pointer; font-size:1rem;}
+  .riga-x{border:none; background:none; color:#b3261e; cursor:pointer; font-size:.95rem; padding:0 4px;}
+  .stato-ricerca.err{color:#b3261e;}
+  .spinner{display:inline-block; width:14px; height:14px; border:2px solid #b9d2ee; border-top-color:var(--blu); border-radius:50%; animation:gira .8s linear infinite; vertical-align:-2px; margin-right:6px;}
+  @keyframes gira{to{transform:rotate(360deg)}}
+
+  /* pittogrammi */
+  .picto-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-top:8px;}
+  .picto-card{border:2px solid var(--bordo); border-radius:8px; padding:10px; text-align:center; cursor:pointer; background:#fff; user-select:none;}
+  .picto-thumb{width:64px; height:64px; display:inline-block;}
+  .picto-card .pnome{font-size:.78rem; margin-top:4px; color:#444;}
+  .picto-card .pcod{font-size:.72rem; color:#889; font-weight:700;}
+  .picto-card.sel{border-color:var(--rosso); background:#fff3f4;}
+
+  /* liste frasi */
+  .phrase-box{border:1px solid var(--bordo); border-radius:8px; max-height:280px; overflow-y:auto; margin-top:6px;}
+  .phrase-box label{display:flex; gap:8px; padding:7px 10px; font-size:.85rem; border-bottom:1px solid #eef0f3; cursor:pointer; align-items:flex-start;}
+  .phrase-box label:hover{background:#f7f9fc;}
+  .phrase-box input{margin-top:3px;}
+  .phrase-box b{white-space:nowrap;}
+  .filtro{margin-top:10px;}
+
+  .btnbar{display:flex; justify-content:space-between; margin-top:22px; gap:10px; flex-wrap:wrap;}
+  button.nav{background:var(--blu); color:#fff; border:none; padding:10px 22px; border-radius:8px; font-size:.95rem; cursor:pointer;}
+  button.nav.sec{background:#fff; color:var(--blu); border:1px solid var(--blu);}
+  button.nav:disabled{opacity:.4; cursor:default;}
+  button.stampa{background:var(--rosso);}
+
+  /* dimensioni etichetta */
+  table.dimtab{border-collapse:collapse; font-size:.85rem; margin-top:10px; width:100%;}
+  table.dimtab th, table.dimtab td{border:1px solid var(--bordo); padding:6px 10px; text-align:left;}
+  table.dimtab th{background:#f0f3f7;}
+  table.dimtab tr.evid{background:#eaf6ef; font-weight:600;}
+
+  /* ETICHETTA */
+  #anteprimaWrap{overflow-x:auto; padding:20px; background:#e7e9ee; border-radius:8px; display:flex; justify-content:center;}
+  .etichetta{
+    background:#fff; border:1px solid #999; padding:3mm; display:flex; flex-direction:column; gap:1.5mm;
+    font-family:Arial, Helvetica, sans-serif; color:#000; overflow:hidden; position:relative;
+  }
+  .etichetta .et-nome{font-weight:bold; line-height:1.15;}
+  .etichetta .et-cas{color:#000;}
+  .etichetta .et-pitto{display:flex; flex-wrap:wrap; gap:1mm; align-items:center;}
+  .etichetta .et-avvertenza{font-weight:bold; text-transform:uppercase;}
+  .etichetta .et-frasi{line-height:1.25;}
+  .etichetta .et-frasi p{margin:0 0 .4mm;}
+  .etichetta .et-fornitore{border-top:.3mm solid #000; padding-top:1mm; line-height:1.25;}
+  .etichetta .et-meta{display:flex; gap:4mm; flex-wrap:wrap;}
+
+  footer{max-width:1100px; margin:0 auto; padding:0 16px 40px; font-size:.78rem; color:#8a94a3;}
+
+  @page{size:A4 portrait; margin:8mm;}
+  @media print{
+    body{background:#fff;}
+    body *{visibility:hidden;}
+    #printArea, #printArea *{visibility:visible;}
+    #printArea{position:absolute; left:0; top:0; display:flex !important; flex-wrap:wrap; gap:3mm; padding:0; align-content:flex-start; align-items:flex-start;}
+    .etichetta{page-break-inside:avoid; break-inside:avoid; border:.3mm dashed #999;}
+    header, .stepper, .btnbar, footer{display:none;}
+  }
+  #printArea{display:none;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏷️ Generatore Etichette GHS / CLP</h1>
+  <p>Assistente guidato per l'etichettatura di sostanze e miscele pericolose — Reg. (CE) 1272/2008 (CLP)</p>
+</header>
+
+<main>
+  <div class="stepper" id="stepper">
+    <button data-step="1"><span class="num">1</span>Sostanza</button>
+    <button data-step="2"><span class="num">2</span>Pericoli</button>
+    <button data-step="3"><span class="num">3</span>Contenitore</button>
+    <button data-step="4"><span class="num">4</span>Etichetta</button>
+  </div>
+
+  <!-- ================= STEP 1 ================= -->
+  <section class="step" id="step1">
+    <div class="card">
+      <h2>1 · Identificazione della sostanza</h2>
+      <p class="hint">Scrivi il nome (o il numero CAS) della sostanza: il programma la cerca <b>nell'archivio locale</b> e nel <b>database globale PubChem</b> (NIH — classificazioni GHS aggregate da ECHA e altre fonti ufficiali) e compila da solo pittogrammi, avvertenza e frasi H/P. Per il database globale usa il nome inglese (es. <i>ethanol</i>, <i>sulfuric acid</i>) o direttamente il CAS. <b>Verifica sempre con la Sezione 2 della SDS del tuo fornitore</b>: la classificazione può variare con concentrazione e fornitore.</p>
+
+      <label class="fld">🔎 Cerca sostanza (nome o CAS) — premi Invio per cercare la voce digitata</label>
+      <input type="text" id="cercaGlobale" placeholder="es. acetone · ethanol · 7664-93-9 · sodium hydroxide…" autocomplete="off">
+      <div class="preset-list" id="presetList"></div>
+      <div class="stato-ricerca" id="statoRicerca"></div>
+
+      <div id="recentiWrap" style="display:none">
+        <label class="fld">🕘 Etichette recenti (salvate in questo browser)</label>
+        <div class="preset-list" id="listaRecenti"></div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label class="fld">Nome della sostanza / miscela *</label>
+          <input type="text" id="inNome" placeholder="es. Acetone">
+        </div>
+        <div>
+          <label class="fld">Numero CAS</label>
+          <input type="text" id="inCas" placeholder="es. 67-64-1">
+        </div>
+        <div>
+          <label class="fld">Concentrazione / purezza</label>
+          <input type="text" id="inConc" placeholder="es. ≥ 99,5 % — oppure 37 % in acqua">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label class="fld">Fornitore / laboratorio (nome, indirizzo, telefono)</label>
+          <textarea id="inFornitore" rows="2" placeholder="es. Laboratorio Chimico XYZ – Via Roma 1, Milano – tel. 02 1234567"></textarea>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label class="fld">Data preparazione</label>
+          <input type="date" id="inData">
+        </div>
+        <div>
+          <label class="fld">Operatore (facoltativo)</label>
+          <input type="text" id="inOperatore" placeholder="es. M. Rossi">
+        </div>
+        <div>
+          <label class="fld">Lotto / riferimento interno (facoltativo)</label>
+          <input type="text" id="inLotto" placeholder="es. LB-2026-014">
+        </div>
+        <div>
+          <label class="fld">Numero / nome laboratorio (facoltativo)</label>
+          <input type="text" id="inLab" placeholder="es. Lab 12 — Chimica Organica">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label class="fld">Data apertura contenitore (facoltativo)</label>
+          <input type="date" id="inApertura">
+        </div>
+        <div>
+          <label class="fld">Scadenza / ritestare entro (facoltativo)</label>
+          <input type="date" id="inScadenza">
+        </div>
+        <div style="align-self:end; font-size:.8rem; color:#5a6472; padding-bottom:8px">Consigliati per sostanze perossidabili (es. eteri, EUH019): l'app ti avvisa se mancano.</div>
+      </div>
+      <div class="btnbar">
+        <span></span>
+        <button class="nav" onclick="vaiStep(2)">Avanti → Pericoli</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= STEP 2 ================= -->
+  <section class="step" id="step2">
+    <div class="card">
+      <h2>2 · Classificazione di pericolo</h2>
+      <p class="hint">Seleziona i pittogrammi GHS, l'avvertenza e le frasi H (pericolo) e P (precauzione) come riportati nella SDS. Se hai cercato la sostanza allo step 1 i campi sono già precompilati.</p>
+      <div class="avviso verde" id="fonteBanner" style="display:none"></div>
+
+      <label class="fld">Pittogrammi GHS</label>
+      <div class="picto-grid" id="pictoGrid"></div>
+
+      <label class="fld">Avvertenza (signal word)</label>
+      <select id="inAvvertenza">
+        <option value="">— nessuna —</option>
+        <option value="Pericolo">PERICOLO (Danger)</option>
+        <option value="Attenzione">ATTENZIONE (Warning)</option>
+      </select>
+
+      <label class="fld filtro">Indicazioni di pericolo — frasi H / EUH</label>
+      <input type="text" id="filtroH" placeholder="filtra per codice o testo… (es. H225, infiammabile)">
+      <div class="phrase-box" id="listaH"></div>
+
+      <label class="fld filtro">Consigli di prudenza — frasi P</label>
+      <input type="text" id="filtroP" placeholder="filtra per codice o testo… (es. P280, guanti)">
+      <div class="phrase-box" id="listaP"></div>
+
+      <div class="avviso blu" id="consiglioP" style="display:none"></div>
+
+      <div class="btnbar">
+        <button class="nav sec" onclick="vaiStep(1)">← Indietro</button>
+        <button class="nav" onclick="vaiStep(3)">Avanti → Contenitore</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= STEP 3 ================= -->
+  <section class="step" id="step3">
+    <div class="card">
+      <h2>3 · Contenitore e formato etichetta</h2>
+      <p class="hint">Le dimensioni minime dell'etichetta dipendono dalla capacità del contenitore (CLP, Allegato I, punto 1.2.1). Il tipo di contenitore determina inoltre alcuni accorgimenti pratici.</p>
+
+      <div class="row">
+        <div>
+          <label class="fld">Tipo di contenitore</label>
+          <select id="inTipoCont">
+            <option value="bottiglia">Bottiglia / flacone da laboratorio</option>
+            <option value="spruzzetta">Spruzzetta / contenitore di travaso</option>
+            <option value="falcon">Provetta Falcon (15 / 50 ml)</option>
+            <option value="eppendorf">Microprovetta Eppendorf (0,5 – 2 ml)</option>
+            <option value="vial">Vial / fiala / provetta in vetro</option>
+            <option value="becher">Becher / beuta / matraccio (vetreria aperta)</option>
+            <option value="barattolo">Barattolo / contenitore per solidi</option>
+            <option value="tanica">Tanica</option>
+            <option value="fusto">Fusto / cisternetta</option>
+            <option value="sacco">Sacco</option>
+            <option value="bombola">Bombola gas</option>
+            <option value="altro">Altro</option>
+          </select>
+        </div>
+        <div>
+          <label class="fld">Capacità nominale</label>
+          <div style="display:flex; gap:8px;">
+            <input type="number" id="inCapacita" min="0" step="any" value="1" style="flex:1">
+            <select id="inUnita" style="width:90px">
+              <option value="ml">ml</option>
+              <option value="l" selected>L</option>
+              <option value="g">g</option>
+              <option value="kg">kg</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <table class="dimtab" id="tabDim">
+        <tr><th>Capacità dell'imballaggio</th><th>Dimensioni minime etichetta (mm)</th></tr>
+        <tr data-k="0"><td>≤ 3 litri</td><td>almeno 52 × 74</td></tr>
+        <tr data-k="1"><td>&gt; 3 e ≤ 50 litri</td><td>almeno 74 × 105</td></tr>
+        <tr data-k="2"><td>&gt; 50 e ≤ 500 litri</td><td>almeno 105 × 148</td></tr>
+        <tr data-k="3"><td>&gt; 500 litri</td><td>almeno 148 × 210</td></tr>
+      </table>
+
+      <div class="avviso" id="noteContenitore"></div>
+
+      <div class="row">
+        <div>
+          <label class="fld">Formato etichetta da stampare</label>
+          <select id="inFormato">
+            <option value="auto" selected>Automatico (minimo di legge per la capacità indicata)</option>
+            <option value="52x74">52 × 74 mm</option>
+            <option value="74x105">74 × 105 mm</option>
+            <option value="105x148">105 × 148 mm (A6)</option>
+            <option value="148x210">148 × 210 mm (A5)</option>
+            <option value="38x60">38 × 60 mm (mini — solo vial/uso interno)</option>
+          </select>
+        </div>
+        <div>
+          <label class="fld">Copie da stampare (griglia su A4)</label>
+          <input type="number" id="inCopie" min="1" max="40" value="1">
+        </div>
+      </div>
+
+      <div class="btnbar">
+        <button class="nav sec" onclick="vaiStep(2)">← Indietro</button>
+        <button class="nav" onclick="vaiStep(4)">Avanti → Anteprima etichetta</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= STEP 4 ================= -->
+  <section class="step" id="step4">
+    <div class="card">
+      <h2>4 · Anteprima e stampa</h2>
+      <p class="hint">L'anteprima è in dimensioni reali (mm). La stampa avviene su <b>foglio A4 verticale</b>: le copie vengono disposte in griglia e ogni etichetta è delimitata da una <b>linea tratteggiata di ritaglio</b>. In fase di stampa imposta scala 100 % (disattiva "adatta alla pagina") e usa preferibilmente carta adesiva A4; poi ritaglia lungo il tratteggio con forbici o taglierina. <b>💧 Consiglio:</b> una volta applicata l'etichetta sul contenitore, ricoprila interamente con nastro adesivo trasparente (o usa etichette plastificate): la protegge da schizzi, solventi e condensa che renderebbero illeggibili pittogrammi e frasi.</p>
+
+      <div class="row" style="margin-bottom:14px">
+        <div>
+          <label class="fld">Dimensione testo etichetta</label>
+          <input type="range" id="inFont" min="5" max="14" step="0.5" value="8" style="width:100%">
+        </div>
+        <div>
+          <label class="fld">Mostra sull'etichetta</label>
+          <label style="font-weight:400;font-size:.85rem"><input type="checkbox" id="ckTestiH" checked> testo completo frasi H</label><br>
+          <label style="font-weight:400;font-size:.85rem"><input type="checkbox" id="ckTestiP" checked> testo completo frasi P</label><br>
+          <label style="font-weight:400;font-size:.85rem"><input type="checkbox" id="ckMeta" checked> data / operatore / lotto / lab</label><br>
+          <label style="font-weight:400;font-size:.85rem"><input type="checkbox" id="ckQR" checked> QR code di identificazione</label>
+        </div>
+        <div>
+          <label class="fld">Contenuto del QR (se attivo)</label>
+          <select id="inQrModo">
+            <option value="sds" selected>📑 Ricerca diretta SDS in PDF dal CAS (miglior risultato)</option>
+            <option value="pubchem">🔗 PubChem — sezione sicurezza della sostanza (da CID o CAS)</option>
+            <option value="dati">📄 Dati etichetta (nome · CAS · lotto · data · lab)</option>
+            <option value="link">✏️ Personalizzato (testo o link qui sotto, es. SDS del tuo fornitore)</option>
+          </select>
+          <input type="text" id="inQrTesto" placeholder="testo o URL personalizzato…" style="margin-top:6px">
+        </div>
+      </div>
+
+      <div id="avvisiEtichetta"></div>
+      <div id="anteprimaWrap"></div>
+
+      <div id="codaWrap" style="display:none; margin-top:14px">
+        <label class="fld">📋 Coda di stampa (etichette diverse sullo stesso foglio A4)</label>
+        <div id="listaCoda"></div>
+      </div>
+
+      <div class="btnbar">
+        <button class="nav sec" onclick="vaiStep(3)">← Indietro</button>
+        <span style="display:flex; gap:10px; flex-wrap:wrap">
+          <button class="nav sec" onclick="aggiungiCoda()">➕ Aggiungi alla coda</button>
+          <button class="nav stampa" id="btnStampa" onclick="stampaTutto()">🖨️ Stampa etichette</button>
+        </span>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="printArea"></div>
+
+<footer>
+  <p><b>Avvertenza:</b> questo strumento è un ausilio alla compilazione dell'etichetta. La classificazione corretta della sostanza o miscela è responsabilità dell'utilizzatore e va verificata sulla Scheda di Sicurezza (SDS, Sezione 2) e sul Regolamento CLP (CE) n. 1272/2008. Per contenitori ≤ 125 ml alcune indicazioni H/P possono essere omesse (CLP All. I, punto 1.5.2). I pittogrammi riprodotti sono quelli GHS ufficiali (ONU/ECHA, pubblico dominio), incorporati nel file: l'app funziona anche senza connessione.</p>
+  <p style="margin-top:10px; text-align:center;">💡 Idea sviluppata da <b>Lorenzo Birindelli</b></p>
+</footer>
+
+<script>
+"use strict";
+
+/* ============================================================
+   PITTOGRAMMI GHS — SVG semplificati (rombo rosso, simbolo nero)
+   ============================================================ */
+/* Pittogrammi GHS ufficiali (ONU/ECHA, pubblico dominio) incorporati come SVG base64 */
+const PICTO = {
+ GHS01:{nome:"Esplosivo", svg:'<img alt="GHS01" style="width:100%;height:100%;display:block" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+PHN2ZwogICB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iCiAgIHhtbG5zOmNjPSJodHRwOi8vY3JlYXRpdmVjb21tb25zLm9yZy9ucyMiCiAgIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyIKICAgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogICB3aWR0aD0iNzAiCiAgIGhlaWdodD0iNzAiCiAgIGlkPSJzdmcxIgogICB4bWw6c3BhY2U9InByZXNlcnZlIj48ZGVmcyBpZD0iZGVmczYiIC8+PGcKICAgICB0cmFuc2Zvcm09Im1hdHJpeCgxLjI1LDAsMCwtMS4yNSwwLDcwKSIKICAgICBpZD0iZzEwIj48ZwogICAgICAgdHJhbnNmb3JtPSJzY2FsZSgwLjAyMiwwLjAyMikiCiAgICAgICBpZD0iZzEyIj48cGF0aAogICAgICAgICBkPSJNIDIyNDYuODgsMTIyMC4xMyBDIDIxNjIuMzIsMTEzNS41OSAxMzA0LjY1LDI3Ny44OTEgMTIyMC4xLDE5My4zMzIgMTEzNS41NSwyNzcuODkxIDI3Ny44NzUsMTEzNS41OSAxOTMuMzI4LDEyMjAuMTMgYyA4NC41NDcsODQuNTYgOTQyLjIyMiw5NDIuMjUgMTAyNi43NjIsMTAyNi43OSA4NC41NSwtODQuNTQgOTQyLjIzLC05NDIuMjMgMTAyNi43OSwtMTAyNi43OSB6IE0gMCwxMjIwLjEzIDEyMjAuMSwwIDI0NDAuMiwxMjIwLjEzIDEyMjAuMDksMjQ0MC4yNSAwLDEyMjAuMTMiCiAgICAgICAgIGlkPSJwYXRoMTQiCiAgICAgICAgIHN0eWxlPSJmaWxsOiNlZjJmMzI7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxMzYyLjY1LDE4NjEuMjUgLTMzLjE5LDE1LjE3IC0xNzMuMDYsLTQ5My41NCBjIDEwLjI4LC0zLjY4IDIwLjI0LC04LjM3IDI5LjU1LC0xMy45OSBsIDE3Ni43LDQ5Mi4zNiIKICAgICAgICAgaWQ9InBhdGgxNiIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDEzMzguOTQsMTYyNC4xNCAtMTcuMDcsMTAuNDMgLTEzNC44NCwtMjY2LjM3IGMgMC43MywtMC40NSAxLjQ0LC0wLjkxIDIuMTYsLTEuMzYgbCAxNDkuNzUsMjU3LjMiCiAgICAgICAgIGlkPSJwYXRoMTgiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxMTUyLjAxLDEzODQuNDIgMTAyLjUyLDMxOC40NCAtMTguOTcsMTEuMzcgLTg0LjQyLC0zMjkuNTEgYyAwLjI5LC0wLjEgMC41OCwtMC4yMSAwLjg3LC0wLjMiCiAgICAgICAgIGlkPSJwYXRoMjAiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxMTc0LjQsMTU5My40NCAxNC43NCwyMS41IDI1LjQ3LDI3LjczIC0xNC4wMyw0NS40MiAtMTkuMjUsMC4zNCAtOC4zMSwtMjEuMTUgLTE2LjMsNi40MiAtOC4zMiwtNDAuMzkgMTcuMzQsLTguMTUgOC42NiwtMzEuNzIiCiAgICAgICAgIGlkPSJwYXRoMjIiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxMzMxLjA4LDE1NzEuMzEgLTEwLjc4LC0xNS4xNCAtNi4yMiwtMzEuNSAyMS43NiwtMTguODYgMTUuNTYsMTguODYgNC4zNSwyMS4zNSAtOS41NCwyNS41IC03LjQ2LC03Ljg4IC03LjY3LDcuNjciCiAgICAgICAgIGlkPSJwYXRoMjQiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxMjQxLjQyLDEzNTkuNjQgLTIuNTgsNi4wMiAtMjAuNzgsLTIyLjY1IGMgMS4xMSwtMS4xOSAyLjI0LC0yLjM4IDMuMzEsLTMuNiBsIDIwLjA1LDIwLjIzIgogICAgICAgICBpZD0icGF0aDI2IgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTI4Mi4wNSwxNDAwLjY3IDI5OS4wNiwzMDEuOTIgLTE3LjIsMTcuMjEgLTMwMy4yNCwtMzMwLjM2IDE1LjgyLDExLjExIDUuNTYsMC4xMiIKICAgICAgICAgaWQ9InBhdGgyOCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDExMzEuMDYsMTI0OC4yNCA3Ny4xNyw3Ny45MSAtNS41OSwwLjA2IC03MS41OCwtNzcuOTciCiAgICAgICAgIGlkPSJwYXRoMzAiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxNTgwLjI1LDE1NDkuNDMgLTM5OS4yNywtMjgxLjQxIDM5OS4yNywyNDcuODQgMCwzMy41NyIKICAgICAgICAgaWQ9InBhdGgzMiIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDE0NTYuMzUsMTM2NS4yOCAtMS43MiwxOS43OCAtMjM0LjkzLC0xMTEgMjM2LjY1LDkxLjIyIgogICAgICAgICBpZD0icGF0aDM0IgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTI0My43OSwxMzU0LjA4IDMxLjg0LDE0LjYzIDYuODksLTI0LjA5IDUwLjc3LDQxLjMgMjguNCw1Mi40OSAtNDQuNzUsLTM3IC0zNC44OSwtMC43NCAtNS41NiwtMC4xMiAtMTUuODIsLTExLjExIC0yNC42MywtMTcuMjkgMi44LC02LjQ5IDIuNTgsLTYuMDIgMi4zNywtNS41NiIKICAgICAgICAgaWQ9InBhdGgzNiIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDE1MjQuMzQsMTQyMS4yMSAtNy43NiwtMjAuNjYgNzEuNDMsLTguNiAtNDcuMzQsNDcuMzIgLTE2LjMzLC0xOC4wNiIKICAgICAgICAgaWQ9InBhdGgzOCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDE3MjAuNTMsMTUwOC4xMiA0OC4xOCwtMzIuNyAtMC44Niw1OC41MiAtMzEuODMsNTQuMjEgLTE0LjYzLC00NS42IC0zOC43MiwtMS43MyAtMTEuMiwtOC42MSAtNS4xNiwtMzIuNyAzMC4xMiwtMTcuMjEgMjQuMSwyNS44MiIKICAgICAgICAgaWQ9InBhdGg0MCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDE4NzcuNiwxNDEyLjU4IC05Ljc4LDIwLjYxIC03MDMuMDYsLTE4Mi4yOCA3MTIuODQsMTYxLjY3IgogICAgICAgICBpZD0icGF0aDQyIgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTE5MC45NywxMjI5LjUzIDc3Mi4zMywxMDQuOTIgMCwyNi4wNCAtNzcyLjQxLC0xMzAuODkgMC4wOCwtMC4wNyIKICAgICAgICAgaWQ9InBhdGg0NCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDE0NzEuODEsMTIwNS4zNCA3LjkyLC04LjUzIDYwLjkzLC0xLjkzIDI0LjQ2LDI3LjgyIC04NS43MiwzNy45OCAtMjIuNzgsLTIxLjcxIC0zMi41NiwtMTAuODUgNy43LC0yOS43OCAxMy4zLC0wLjQzIDI2Ljc1LDcuNDMiCiAgICAgICAgIGlkPSJwYXRoNDYiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxNDMyLjc1LDExOTQuNDkgMS4wMiwwLjI5IC0xLjEsMC4wNCAwLjA4LC0wLjMzIgogICAgICAgICBpZD0icGF0aDQ4IgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTQ4NS45MiwxMTkwLjE1IDQ3LjczLC0zLjI1IDIuNjYsMy4wMiAtNTIuNDksMi40OSAyLjEsLTIuMjYiCiAgICAgICAgIGlkPSJwYXRoNTAiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxNDMyLjY3LDExOTQuODIgMS4xLC0wLjA0IDUwLjA1LC0yLjM3IDUyLjQ5LC0yLjQ5IDMzOS4xMiwtMTYuMDUgLTE0LjExLDEwLjg1IC0zMjAuNjYsMTAuMTYgLTYwLjkzLDEuOTMgLTM0LjY3LDEuMSAtMTMuMywwLjQzIC0yMTQuMTUsNi43NyAwLjA3LC0wLjExIDIxNC45OSwtMTAuMTgiCiAgICAgICAgIGlkPSJwYXRoNTIiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxMzQ0LjQsMTE0Mi45OCAzLjgzLDUuMyAzNiwtMTUuNTYgMTI2LjYzLC0zMi42MyA1LjQzLDM2LjkgLTI3Ni45MSwzOC43NyBjIC0wLjY2LC0xLjc0IC0xLjM0LC0zLjQ3IC0yLjA3LC01LjE5IGwgMTA3LjA5LC0yNy41OSIKICAgICAgICAgaWQ9InBhdGg1NCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDEzNDQuNCwxMTQyLjk4IC00LjY2LC02LjQ5IC0zMi41OSw2LjA0IC05LjAzLC0xNi40NCAzMi44NSwtMjQuMzggODYuNTUsLTE0Ljc4IDEuMzcsMjAuODIgLTE0LjI1LDE2LjE1IC0yMC40MSw4LjgyIC0zNiwxNS41NiAtMy44MywtNS4zIgogICAgICAgICBpZD0icGF0aDU2IgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTQwOS44NCwxMDM4LjE5IC0xMC4xMywyMC41NCAtMTcxLjE3LDk0LjA5IGMgLTAuNSwtMC44OSAtMSwtMS43OSAtMS41MywtMi42NyBsIDE4Mi44MywtMTExLjk2IgogICAgICAgICBpZD0icGF0aDU4IgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTEzMi42MiwxMjA2LjAxIDIyLjM2LC0xNy40NiAwLjkyLDAuNjIgLTIzLjI4LDE2Ljg0IgogICAgICAgICBpZD0icGF0aDYwIgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTQxNC45OCw5ODUuNSA5LjM2LDkuMzU5IC0yMDIuODEsMTQ2LjgwMSBjIC0wLjc2LC0xLjEgLTEuNTMsLTIuMiAtMi4zMSwtMy4yOCBMIDE0MTQuOTgsOTg1LjUiCiAgICAgICAgIGlkPSJwYXRoNjIiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxMzYzLjMxLDk5OS43MyAtOS4zNSwyMS4xNiAtMTQ0LjE0LDEwNS43OSBjIC0wLjU3LC0wLjYzIC0xLjE0LC0xLjI2IC0xLjcxLC0xLjg5IGwgMTU1LjIsLTEyNS4wNiIKICAgICAgICAgaWQ9InBhdGg2NCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDkxNy44MTIsMTA0OS4zNCAxNC41ODYsLTE2LjIgMTYuMiw3LjMgOC4xMDUsLTguMTEgMTYuMjA3LDkuNzIgNi40ODEsMjEuODcgLTE1LjM5OSw5Ljc0IC0yMy41NjYsMCAtMTkuMzEzLC0xNy43MSAtMy4zMDEsLTYuNjEiCiAgICAgICAgIGlkPSJwYXRoNjYiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSA3NjguNzI3LDk0OC4wNTkgMTcuMDExLC0xNi4yMDcgMTM1LjM3NSwxMjQuMDk4IDE5LjMxMywxNy43MSA1OC42ODMsNTMuNzkgYyAtMC43OTMsMC45MSAtMS41NjYsMS44MyAtMi4zNDcsMi43NyBMIDc2OC43MjcsOTQ4LjA1OSIKICAgICAgICAgaWQ9InBhdGg2OCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDc4NC4xMTcsMTA1MC4xNSAwLjgwOSwtMTAuNTMgMTk1LjE2NCwxMTQuODggYyAtMC4yMzEsMC40MSAtMC40NDIsMC44NCAtMC42NjQsMS4yNSBsIC0xOTUuMzA5LC0xMDUuNiIKICAgICAgICAgaWQ9InBhdGg3MCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDg1NS40MjIsMTEyOC43NiAtMS42MjEsLTEyLjE2IDEyNC41NTgsNDEuMTYgYyAtMC41ODIsMS4wOSAtMS4xNjQsMi4yIC0xLjcxOCwzLjMyIGwgLTEyMS4yMTksLTMyLjMyIgogICAgICAgICBpZD0icGF0aDcyIgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gODE3LjM0LDEwOTUuNTMgMCwxNC41OCAtNDIuOTQ1LDIuNDMgMjUuMTE3LC0yNC4zIDE3LjgyOCw3LjI5IgogICAgICAgICBpZD0icGF0aDc0IgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gNzA3LjE0NSwxMDMzLjk1IC0yNC4zMTMsMTUuMzkgLTguOTEsLTI5LjE3IDI0Ljc2NiwtMzQuMDQxIDEuMTYsLTEuNTk4IDguMTA1LDIyLjY3OSAxNS4zOTEsMC44MSA5LjcyMiwxMC41MyA0Ljg2OCwxNS40IC0yMy41LDguOTIgLTcuMjg5LC04LjkyIgogICAgICAgICBpZD0icGF0aDc2IgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gNjEzLjE0OCwxMDg5LjA1IC0yLjQzMywtMTIuMTYgMzYzLjMxMiw4OS42OCBjIC0wLjMsMC42OCAtMC41ODYsMS4zNyAtMC44NzUsMi4wNCBsIC0zNjAuMDA0LC03OS41NiIKICAgICAgICAgaWQ9InBhdGg3OCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDQ4OC4zNjMsMTEyNy45NSAtMC44MDgsLTEwLjU0IDQ4MC4zNzksNjQuODUgYyAtMC4wODIsMC4yNCAtMC4xNTcsMC40NyAtMC4yMzUsMC43IGwgLTQ3OS4zMzYsLTU1LjAxIgogICAgICAgICBpZD0icGF0aDgwIgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gNjY2LjYyNSwxMTczLjMyIDAsLTkuNzMgNjkuNjg3LC02LjQ3IC00NC41NywzNC44MyAtMjUuMTE3LC0xOC42MyIKICAgICAgICAgaWQ9InBhdGg4MiIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDg0Ny4zMiwxMjA3LjM1IC0xLjc1LDMuMTQgLTQ0Ljc4NSwxLjggLTkuMzc5LC0xNS40OCAyNS45MzQsLTE4LjYzIDI4LjM1MSwtNC44NiA4LjkxOCwxNC41OCAxNy44MjUsMCAtMS45MDMsMjEuNTkgLTE1LjQ4OCwwLjYxIC03LjcyMywtMi43NSIKICAgICAgICAgaWQ9InBhdGg4NCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDg3MC4wMDQsMTIxNS40NiAtNS44NDQsLTIuMDkgNi4wNjcsLTAuNDEgLTAuMjIzLDIuNSIKICAgICAgICAgaWQ9InBhdGg4NiIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDgzOS4yMTksMTIyMS45NCAtMzEuNjAyLDEuNjEgLTMuNzY5LC02LjIgMzkuMzU5LC0yLjYgLTMuOTg4LDcuMTkiCiAgICAgICAgIGlkPSJwYXRoODgiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSA4NzAuMjI3LDEyMTIuOTYgLTYuMDY3LDAuNDEgLTIwLjk1MywxLjM4IC0zOS4zNTksMi42IC0xOTIuMzIxLDEyLjY5IDkuNzIzLC0xMC41MyAxNzkuNTM1LC03LjIyIDQ0Ljc4NSwtMS44IDkuNDczLC0wLjM5IDE1LjQ4OCwtMC42MSA5Mi4xOCwtMy43IDAuNDAyLDEuMDQgLTkyLjg4Niw2LjEzIgogICAgICAgICBpZD0icGF0aDkwIgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTAwNC41MSwxMjA0LjExIC00MC4zNzcsMi42NSA0LjY3NiwtMS4yMiAzNS43MDEsLTEuNDMiCiAgICAgICAgIGlkPSJwYXRoOTIiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSA4MjMuODE2LDEyNjAuMDIgLTEyLjE1MiwtMTAuNTMgMTkyLjAzNiwtMjkuOTggLTE3OS44ODQsNDAuNTEiCiAgICAgICAgIGlkPSJwYXRoOTQiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSA4NzkuNzI3LDEyOTcuMjkgMy4yNDIsLTguMSAxMjguMDIxLC02MS41OSAtMTMxLjI2Myw2OS42OSIKICAgICAgICAgaWQ9InBhdGg5NiIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDkwOC4wODYsMTMyNC4wMyA3LjI5NywtMTQuNTggNDkuMTMzLC0zMyBjIDAuMzUxLDEuNDIgMC43MDMsMi44MyAxLjA5Myw0LjIzIGwgLTU3LjUyMyw0My4zNSIKICAgICAgICAgaWQ9InBhdGg5OCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDEwMjYuMzksMTIzNC45IC0yNC42NCwxOC41NiAtMi43NzMsLTAuMTYgMjcuNDEzLC0xOC40IgogICAgICAgICBpZD0icGF0aDEwMCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDExODEuMTgsMTIzNy4zMiAwLC0zMS4xNCAtMjUuMjgsLTE3LjAxIC0wLjkyLC0wLjYyIC0yMC4wOSwtMTMuNTEgLTYzLjEzLDUzLjg2IC00NC42MSwtMzguNzIgLTU4LjM0MSwxNS4zNiAtNC42NzYsMS4yMiAtMC45NDksMC4yNiAtMC4wNzEsLTAuMTkgLTAuNDAyLC0xLjA0IC0wLjUwNCwtMS4zMiBjIDEuMzUyLC03LjM3IDMuMjE1LC0xNC41NSA1LjQ5MiwtMjEuNTEgMC4wNzgsLTAuMjMgMC4xNTMsLTAuNDYgMC4yMzUsLTAuNyAxLjU0MywtNC42NiAzLjI4OSwtOS4yMSA1LjIxOCwtMTMuNjUgMC4yODksLTAuNjcgMC41NzUsLTEuMzYgMC44NzUsLTIuMDQgMC44MzYsLTEuODUgMS43MTUsLTMuNjggMi42MTQsLTUuNDkgMC41NTQsLTEuMTIgMS4xMzYsLTIuMjMgMS43MTgsLTMuMzIgMC4zNTYsLTAuNjcgMC43MDMsLTEuMzUgMS4wNjcsLTIuMDEgMC4yMjIsLTAuNDEgMC40MzMsLTAuODQgMC42NjQsLTEuMjUgNC44MjgsLTguNjggMTAuNDMzLC0xNi43OSAxNi42NzIsLTI0LjI4IDAuNzgxLC0wLjk0IDEuNTU0LC0xLjg2IDIuMzQ3LC0yLjc3IDI2LjUxMSwtMzAuMyA2NC4wNTEsLTQ5LjIxIDEwNS42OTEsLTQ5LjIxIDQwLjQxLDAgNzYuOTYsMTcuODIgMTAzLjMxLDQ2LjU1IDAuNTcsMC42MyAxLjE0LDEuMjYgMS43MSwxLjg5IDMuMzEsMy43MyA2LjQ0LDcuNjQgOS40LDExLjcgMC43OCwxLjA4IDEuNTUsMi4xOCAyLjMxLDMuMjggMS45MSwyLjc3IDMuNzUsNS41OCA1LjQ4LDguNDkgMC41MywwLjg4IDEuMDMsMS43OCAxLjUzLDIuNjcgMy4yNyw1LjY5IDYuMiwxMS42MSA4Ljc3LDE3Ljc1IDAuNzMsMS43MiAxLjQxLDMuNDUgMi4wNyw1LjE5IDEuNjYsNC40IDMuMTgsOC44OSA0LjQ4LDEzLjQ4IGwgLTIxLjQ0LDcuNjggLTQuNzQsOC4wOCAtMC4wNywwLjExIC0zLjYsNi4xMyAtMjMuMDQsMTguMjkgLTAuMDgsMC4wNyAtOS43MSw3LjcyIgogICAgICAgICBpZD0icGF0aDEwMiIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDExMDQuOCwxMzkyLjE5IGMgLTY1LjY0LDAgLTEyMS4xMzIsLTQ2Ljk4IC0xMzkuMTkxLC0xMTEuNTEgLTAuMzksLTEuNCAtMC43NDIsLTIuODEgLTEuMDkzLC00LjIzIC0wLjE4LC0wLjcgLTAuMzc1LC0xLjM5IC0wLjUzOSwtMi4wOCBsIDIwLjI1MywtMjEuODkgMTQuNzQ3LDAuODIgMi43NzMsMC4xNiA0Mi4yMywyLjM4IDU4LjkzLC0yOS40NiAzMy42Niw0MC4zOSAtMTUuMTUsMzcuMDQgNDYuMjksLTUuMDQgNi43NCwyNy43NyAyOC4xOSwtMC4zMyA1LjU5LC0wLjA2IDIzLjQ1LC0wLjI4IGMgLTMuMSw0LjcyIC02LjU3LDkuMjIgLTEwLjMxLDEzLjU0IC0xLjA3LDEuMjIgLTIuMiwyLjQxIC0zLjMxLDMuNiAtOC40NCw5LjAzIC0xOC4xOSwxNy4wMiAtMjguODcsMjMuODMgLTAuNzIsMC40NSAtMS40MywwLjkxIC0yLjE2LDEuMzYgLTAuMzYsMC4yMyAtMC43MiwwLjQ2IC0xLjA4LDAuNjkgLTkuMzEsNS42MiAtMTkuMjcsMTAuMzEgLTI5LjU1LDEzLjk5IC0xLjQ2LDAuNTIgLTIuOTEsMS4wNSAtNC4zOSwxLjU0IC0wLjI5LDAuMDkgLTAuNTgsMC4yIC0wLjg3LDAuMyAtMTUuMTEsNC44NCAtMzAuODUsNy40NyAtNDYuMzQsNy40NyIKICAgICAgICAgaWQ9InBhdGgxMDQiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PC9nPjwvZz48L3N2Zz4=">'},
+ GHS02:{nome:"Infiammabile", svg:'<img alt="GHS02" style="width:100%;height:100%;display:block" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+PHN2ZwogICB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iCiAgIHhtbG5zOmNjPSJodHRwOi8vY3JlYXRpdmVjb21tb25zLm9yZy9ucyMiCiAgIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyIKICAgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogICB3aWR0aD0iNzAiCiAgIGhlaWdodD0iNzAiCiAgIGlkPSJzdmcyIgogICB4bWw6c3BhY2U9InByZXNlcnZlIj48ZGVmcyBpZD0iZGVmczYiIC8+PGcKICAgICB0cmFuc2Zvcm09Im1hdHJpeCgxLjI1LDAsMCwtMS4yNSwwLDcwKSIKICAgICBpZD0iZzEwIj48ZwogICAgICAgdHJhbnNmb3JtPSJzY2FsZSgwLjAyMiwwLjAyMikiCiAgICAgICBpZD0iZzEyIj48cGF0aAogICAgICAgICBkPSJNIDIyNDYuODgsMTIyMC4xMyBDIDIxNjIuMzIsMTEzNS41OSAxMzA0LjY1LDI3Ny44OTEgMTIyMC4xLDE5My4zMzIgMTEzNS41NSwyNzcuODkxIDI3Ny44NzUsMTEzNS41OSAxOTMuMzI4LDEyMjAuMTMgYyA4NC41NDcsODQuNTYgOTQyLjIyMiw5NDIuMjUgMTAyNi43NjIsMTAyNi43OSA4NC41NSwtODQuNTQgOTQyLjIzLC05NDIuMjMgMTAyNi43OSwtMTAyNi43OSB6IE0gMCwxMjIwLjEzIDEyMjAuMSwwIDI0NDAuMiwxMjIwLjEzIDEyMjAuMDksMjQ0MC4yNSAwLDEyMjAuMTMiCiAgICAgICAgIGlkPSJwYXRoMTQiCiAgICAgICAgIHN0eWxlPSJmaWxsOiNlZjJmMzI7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxMTg0LDE4MjkuNjEgLTAuNCwtMTIwLjczIC05LjMzLC05MC4zNCAtMTMuNzUsLTU1LjUgLTI4Ljc4LC02NC44MyAtMzIuNCw2NS4yMyAtOC45Miw1OS4xNCAtMTguNjQsNDcuODEgLTI3LjU1LDI5LjE3IC00MS43MywxMC4xMyAxMC41NCwtNTMuODcgLTExLjM2LC01NS4xMiAtOC40OTIsLTcwLjg4IC0wLjgwOSwtNzEuNzEgMTguMjMxLC01NC4yOSAtMzcuMjc0LDIzLjkgLTUxLjg1Niw3NC41NCAtNDQuOTY0LDQ1Ljc4IDguOTEsLTkyLjc3IDAuODA0LC03MS4zIDcuNjk2LC02MS45OSAyMy4wOSwtNjIuMzkgMjkuNTgyLC02Mi43OCAtNzMuMzI4LDEwLjUzIC00MC45MjIsMzEuNTggLTI1LjkyMiwzNC40NSAtMzkuNzA3LDQwLjkyIDkuMzEyLC02Mi43OSA2NC4wMTIsLTIyMy4yMiA0NC41NjYsLTc5LjgzMSA3My43MzUsLTUzLjA1OCAxMDQuOTM2LC00My4zNiAxNjUuNjYsLTEwLjU0MyAtNzcuNzUsMTQuMTkyIC02My4yLDMwLjc4OSAtNjQuMDIsNzYuMTcyIC0zOS4yOSw5MC4zMjkgNDAuOTIsLTI5Ljk3IDM4LjA5LC0xMy4zNyA2OS42NywtOC4wOSAtMzguNDgsNDkuNDEgLTIxLjA4LDM2LjA2IC0xNS4zOSw0NC45NyAxMC4xMyw0Mi41MyAyLjQzLDQ0Ljk4IDE3LjQyLC00NS4zOCAyNC43MiwtMzUuNjUgNzMuMzMsLTQwLjUxIC0xMC41NCw2MS4xOCAtMC44MSw0Ni45OSA0My4zNSwxMjQuMzcgMCw4Ni43IDQzLjMsLTQyLjk1IDQxLjMsLTYyLjM5IDIwLjY5LC04Ni4yOCAtMC40MiwtMTI4Ljg0IDM0Ljg0LDM2LjA2IDYyLDQwLjkyIDIxLjA2LDQ3LjM5IDAsLTg5LjUyIC0yMi42OSwtNjcuMjYgLTI2LjM0LC0zNi4wNCAtMjcuNTYsLTI3LjU2IDQ3LjgxLC0wLjQxIDQyLjE1LDExLjc1IDQ5LjAxLDMxLjIxIC01MC4yMywtOTQuMDA4IC02Ni4wNSwtNjQuODIxIC0zOC4wNywtMjguMzUxIC0yNy40MSwtMTUuNjYgNTguMjMsMCA2My40LDExLjA1IDY2LjMzLDMyLjQzIDYyLjY0LDQzLjUgNTIuMzQsODMuMjcgMzIuNDMsMTA2LjE1IDEwLjIzLDE1MS45OCAtMTEuNzEsLTUzLjk2IC00MC41MywtMjggLTczLjcyLC0yMS4zNiA0MS4yNyw2MS4xNyAyMi4xMiw0My40OSAyMC41NCw4NS4yNCAtOS43Nyw2MC40NCAtMjIuODIsODAuMTggLTM0LjUyLC02Ny4xIC00MS40OCwtNDEuNDggLTQ4Ljc0LC0yNy41NyAyOC4xMSw2OS4zMiAwLjg2LDkxLjYyIC0xMC41OCw5MS4wNCAtNDQuMjgsODYuMzIgLTExLjE0LC0xMDYuMzcgLTIxLjcxLC03NiAtMzAuOTEsLTMxLjIgLTMyLjMsLTExLjk3IDEwLjAyLDY0LjYxIC03Ljc4LDU2Ljc5IC00My43MywxMjMuOSAtNjUuMTUsMTIxLjY4IC0yMS44NSwxMDUuODggLTIyLjI5LC02Ni40NCAtMTEuMzQsLTQ5LjQzIgogICAgICAgICBpZD0icGF0aDE2IgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gODczLjA2Niw2OTEuNDg4IDczMS42NDUsMCAwLDc1LjE0MDYgLTczMS42NDUsMCAwLC03NS4xNDA2IHoiCiAgICAgICAgIGlkPSJwYXRoMTgiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PC9nPjwvZz48L3N2Zz4=">'},
+ GHS03:{nome:"Comburente", svg:'<img alt="GHS03" style="width:100%;height:100%;display:block" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+PHN2ZwogICB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iCiAgIHhtbG5zOmNjPSJodHRwOi8vY3JlYXRpdmVjb21tb25zLm9yZy9ucyMiCiAgIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyIKICAgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogICB3aWR0aD0iNzAiCiAgIGhlaWdodD0iNzAiCiAgIGlkPSJzdmczIgogICB4bWw6c3BhY2U9InByZXNlcnZlIj48ZGVmcyBpZD0iZGVmczYiIC8+PGcKICAgICB0cmFuc2Zvcm09Im1hdHJpeCgxLjI1LDAsMCwtMS4yNSwwLDcwKSIKICAgICBpZD0iZzEwIj48ZwogICAgICAgdHJhbnNmb3JtPSJzY2FsZSgwLjAyMiwwLjAyMikiCiAgICAgICBpZD0iZzEyIj48cGF0aAogICAgICAgICBkPSJNIDIyNDYuODgsMTIyMC4xMyBDIDIxNjIuMzIsMTEzNS41OSAxMzA0LjY1LDI3Ny44OTEgMTIyMC4xLDE5My4zMzIgMTEzNS41NSwyNzcuODkxIDI3Ny44NzUsMTEzNS41OSAxOTMuMzI4LDEyMjAuMTMgYyA4NC41NDcsODQuNTYgOTQyLjIyMiw5NDIuMjUgMTAyNi43NjIsMTAyNi43OSA4NC41NSwtODQuNTQgOTQyLjIzLC05NDIuMjMgMTAyNi43OSwtMTAyNi43OSB6IE0gMCwxMjIwLjEzIDEyMjAuMSwwIDI0NDAuMiwxMjIwLjEzIDEyMjAuMDksMjQ0MC4yNSAwLDEyMjAuMTMiCiAgICAgICAgIGlkPSJwYXRoMTQiCiAgICAgICAgIHN0eWxlPSJmaWxsOiNlZjJmMzI7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxMTQzLjIzLDgwMy44MzIgLTIzNy42NjQsMCAwLC0xMDAuMDk0IDY2MC4zNDQsMCAwLDEwMC4wOTQgLTI2OC4wNCwwIGMgLTI0Ljc3LC02LjEwMiAtNTAuNjYsLTkuMzUyIC03Ny4zMSwtOS4zNTIgLTI2LjY2LDAgLTUyLjU1LDMuMjUgLTc3LjMzLDkuMzUyIgogICAgICAgICBpZD0icGF0aDE2IgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTIyMC41Niw4ODcuMTYgYyAtMTI3LjA1LDAgLTIzMC4wMjksMTAyLjk4MSAtMjMwLjAyOSwyMzAuMDMgMCwxMjcuMDIgMTAyLjk3OSwyMzAuMDEgMjMwLjAyOSwyMzAuMDEgMTI3LjAyLDAgMjMwLjAyLC0xMDIuOTkgMjMwLjAyLC0yMzAuMDEgMCwtMTI3LjA0OSAtMTAzLC0yMzAuMDMgLTIzMC4wMiwtMjMwLjAzIHogbSAyOTkuNjgsMjM2LjYxIDEwLjU5LDgyLjM1IGMgLTEyLjk5LDQ1LjQ2IC0zNS43Miw4Ni44IC02NS43NiwxMjEuNjYgbCAtMjAuNjYsLTE3LjM2IC0xNC4zMiwxOC4wMiAtOC4wMSw0MC43OCBjIC0zMC4yNiwyNC4yMiAtNjQuOTYsNDMuMSAtMTAyLjcsNTUuMjQgbCAtMTYuNzksLTI1Ljk0IC0xMS4xMiwzMy41NCBjIC0yMi44Myw1LjExIC00Ni41Niw3LjgzIC03MC45MSw3LjgzIC0yNS44NiwwIC01MSwtMy4wNiAtNzUuMSwtOC44IGwgMC4zMiwtMTQgLTMxLjcxLC04LjA0IC01LjcsMTAuNzkgYyAtMjcuMDEsLTEwLjAyIC01Mi4zMywtMjMuNTUgLTc1LjM3LC00MC4wMyBsIDcuODksLTE5LjUzIC0zMSwxLjM2IGMgLTMxLjYwOSwtMjcuMjYgLTU3Ljg3LC02MC41NSAtNzcuMDAzLC05OC4wOCBsIDAuNjM2LC0zNS45IC0xOS40ODQsLTE1OS4yMiAtMTQuNzU0LDE4LjI3IEMgOTEyLjIwNyw5NDguNzg5IDEwMTEuOSw4MzYuMTIxIDExNDMuMjMsODAzLjgzMiBjIDI0Ljc4LC02LjEwMiA1MC42NywtOS4zNTIgNzcuMzMsLTkuMzUyIDI2LjY1LDAgNTIuNTQsMy4yNSA3Ny4zMSw5LjM1MiAxMTUuNjEsMjguNDMgMjA2LjcxLDExOS4xMzcgMjM1LjY3LDIzNC41MjggbCAtMTIuMjQsLTE5LjU5IC0xLjA2LDEwNSIKICAgICAgICAgaWQ9InBhdGgxOCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDExOTAuMjIsMTk5NS41IDAsLTgwLjA4IC0yMS4wMSwtMTA5LjIxIC0yNy4wNSwtNjcuODcgLTM0LjI1LDQ0Ljk0IC0xNS4xNywyOS4yNCAtOC42NiwzMC4zNCAtNTUuMjQsNjcuMTUgMTMuMDcsLTQ5LjQ3IC0yNy4xNSwtNTEuMjYgLTEwLjgyLC03NS44MSAxMy40NiwtMTA4Ljc4IC00OC42MTUsMjUuNjggLTMyLjAwNCw0Ny4zNSAtNDMuMzI0LDUxLjk4IDExLjkxOCwtNzMuNjQgMC41NywtMTI0LjAyIDEyLjAyOCwtNjUuMDEgLTU5LjE2NCwzNi4zMSAtNTMuMDgyLDQwLjA3IDExLjkxNCwtMTE0LjggMCwtMTQyLjk3IDI0LjkxOCwtMTI5Ljk4IDI1Ljk5MiwtNTAuODkgMzAuNzM0LC0zOC4wNiAxNC43NTQsLTE4LjI3IDE5LjQ4NCwxNTkuMjIgLTAuNjM2LDM1LjkgLTAuNzE5LDM5LjM2IC0xNi45Myw2OC4yOCAtNy42OTUsNTAuMzQgNDQuMjk3LC00My4yMiAyNi43NjUsLTE1LjMxIDMxLjI4NSwtMS4zNyAzMSwtMS4zNiAtNy44OSwxOS41MyAtMTMuOTYsMzQuNTUgMjQuNTksODMuNTkgMTEuNTgsODUuMDIgMjQuMzksLTEwOC43IDI4Ljc3LC01NC40MyA1LjcsLTEwLjc5IDMxLjcxLDguMDQgLTAuMzIsMTQgLTEuMzIsNTguMTIgNDguNCw5NC44MiAxLjA2LDczLjE4IDU5LjkzLC03MS4wNiAxMi43MiwtNzcuOTQgMjUuMjIsLTc2LjE1IDExLjEyLC0zMy41NCAxNi43OSwyNS45NCA3MC40MSwxMDguNjYgMzIuMjksLTE2My45IDguMDEsLTQwLjc4IDE0LjMyLC0xOC4wMiAyMC42NiwxNy4zNiAyOS4yLDI0LjUzIDQ1LjA2LDMxLjgyIC0wLjUzLC0xMTYuMTMgLTcuOTcsLTYxLjg4IC0xMC41OSwtODIuMzUgMS4wNiwtMTA1IDEyLjI0LDE5LjU5IDY5Ljk1LDExMS45MyAzNy4zLDExMC45NCAwLDEzNS40IC0zNi44MywxNTIuNzEgMCwtMjQuOTIgLTQwLjA4LC0zNy45MSAtNDYuNTcsLTIxLjY1IDEzLjU0LDYzLjQ5IDIzLjg1LDc5LjU0IC0yNS45OCw5My4zMiAtMTQuNjYsLTM5LjIzIC0yNS45OCwtMjcuMDQgLTQ1LjUsLTIxLjY2IDEwLjgzLDYyLjc4IDAsNzQuNzMgLTYyLjgxLDEzNS4zOSAwLC0yOC4xNiAtMTMsLTYwLjY2IC0yNC45MSwtNDcuNjYgLTQ3LjY1LC0yMy44MiAwLDExMC40OCAtMjYuMDEsODYuNjQgLTM1Ljc0LDg1LjU3IC0yNS44MywxMDUuMTggLTI3LjI0LC0xMTguMjUiCiAgICAgICAgIGlkPSJwYXRoMjAiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PC9nPjwvZz48L3N2Zz4=">'},
+ GHS04:{nome:"Gas sotto pressione", svg:'<img alt="GHS04" style="width:100%;height:100%;display:block" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+PHN2ZwogICB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iCiAgIHhtbG5zOmNjPSJodHRwOi8vY3JlYXRpdmVjb21tb25zLm9yZy9ucyMiCiAgIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyIKICAgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogICB3aWR0aD0iNzAiCiAgIGhlaWdodD0iNzAiCiAgIGlkPSJzdmcxIgogICB4bWw6c3BhY2U9InByZXNlcnZlIj48ZGVmcyBpZD0iZGVmczYiIC8+PGcKICAgICB0cmFuc2Zvcm09Im1hdHJpeCgxLjI1LDAsMCwtMS4yNSwwLDcwKSIKICAgICBpZD0iZzEwIj48ZwogICAgICAgdHJhbnNmb3JtPSJzY2FsZSgwLjAyMiwwLjAyMikiCiAgICAgICBpZD0iZzEyIj48cGF0aAogICAgICAgICBkPSJNIDIyNDYuODgsMTIyMC4xMyBDIDIxNjIuMzIsMTEzNS41OSAxMzA0LjY1LDI3Ny44OTEgMTIyMC4xLDE5My4zMzIgMTEzNS41NSwyNzcuODkxIDI3Ny44NzUsMTEzNS41OSAxOTMuMzI4LDEyMjAuMTMgYyA4NC41NDcsODQuNTYgOTQyLjIyMiw5NDIuMjUgMTAyNi43NjIsMTAyNi43OSA4NC41NSwtODQuNTQgOTQyLjIzLC05NDIuMjMgMTAyNi43OSwtMTAyNi43OSB6IE0gMCwxMjIwLjEzIDEyMjAuMSwwIDI0NDAuMiwxMjIwLjEzIDEyMjAuMDksMjQ0MC4yNSAwLDEyMjAuMTMiCiAgICAgICAgIGlkPSJwYXRoMTQiCiAgICAgICAgIHN0eWxlPSJmaWxsOiNlZjJmMzI7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSA2NDAuMzE2LDExMjMuNzMgYyAxNy44OTksLTY2LjcxIDY1LjI0MywtMTExLjk2IDEwNS43NDMsLTEwMS4wOSBsIDc5MS43NzEsMjEyLjUgYyAyNC44Niw2LjY4IDQxLjM1LDMzLjAxIDQ2LjI0LDY3LjgyIGwgMC4wMSwtMC4wNyBjIDIuNjIsMTcuNzIgMTUuNDQsMzMuMDggMzMuODQsMzguMDMgbCAxNjcuNjgsNDUuMDkgYyAxOC42Niw1LjAxIDI4LjcxLDI4LjA1IDIyLjQzLDUxLjQ1IC02LjI2LDIzLjM4IC0yNi40OCwzOC4yNiAtNDUuMTQsMzMuMjUgbCAtMTY3LjY5LC00NS4wMiBjIC0xOC41MywtNC45OCAtMzcuNDYsMi4wNCAtNDguNTQsMTYuMjcgbCAwLjAyLC0wLjA3IGMgLTIxLjU5LDI3LjQxIC00OC45MSw0MS43OCAtNzMuNjgsMzUuMTQgbCAtNzkxLjc3LC0yMTIuOCBjIC00MC40OTIsLTEwLjkgLTU4LjgxMiwtNzMuNzkgLTQwLjkxNCwtMTQwLjUiCiAgICAgICAgIGlkPSJwYXRoMTYiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PC9nPjwvZz48L3N2Zz4=">'},
+ GHS05:{nome:"Corrosivo", svg:'<img alt="GHS05" style="width:100%;height:100%;display:block" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+PHN2ZwogICB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iCiAgIHhtbG5zOmNjPSJodHRwOi8vY3JlYXRpdmVjb21tb25zLm9yZy9ucyMiCiAgIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyIKICAgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogICB3aWR0aD0iNzAiCiAgIGhlaWdodD0iNzAiCiAgIGlkPSJzdmc1IgogICB4bWw6c3BhY2U9InByZXNlcnZlIj48ZGVmcyBpZD0iZGVmczYiIC8+PGcKICAgICB0cmFuc2Zvcm09Im1hdHJpeCgxLjI1LDAsMCwtMS4yNSwwLDcwKSIKICAgICBpZD0iZzEwIj48ZwogICAgICAgdHJhbnNmb3JtPSJzY2FsZSgwLjAyMiwwLjAyMikiCiAgICAgICBpZD0iZzEyIj48cGF0aAogICAgICAgICBkPSJNIDIyNDYuODgsMTIyMC4xMyBDIDIxNjIuMzIsMTEzNS41OSAxMzA0LjY1LDI3Ny44OTEgMTIyMC4xLDE5My4zMzIgMTEzNS41NSwyNzcuODkxIDI3Ny44NzUsMTEzNS41OSAxOTMuMzI4LDEyMjAuMTMgYyA4NC41NDcsODQuNTYgOTQyLjIyMiw5NDIuMjUgMTAyNi43NjIsMTAyNi43OSA4NC41NSwtODQuNTQgOTQyLjIzLC05NDIuMjMgMTAyNi43OSwtMTAyNi43OSB6IE0gMCwxMjIwLjEzIDEyMjAuMSwwIDI0NDAuMiwxMjIwLjEzIDEyMjAuMDksMjQ0MC4yNSAwLDEyMjAuMTMiCiAgICAgICAgIGlkPSJwYXRoMTQiCiAgICAgICAgIHN0eWxlPSJmaWxsOiNlZjJmMzI7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSA3NTkuNzA3LDExNzYuOTYgYyAtMzcuNjM3LDAuNTMgLTYwLjM4MywxMy45IC03MC45NDUsMzUuMyBsIC0yNzAuNjg4LDMuODUgLTEuNzYyLC0xMjMuNzMgNjc0LjU1OCwtOS41NiAxLjc2LDEyMy43MSAtMjQ1LjI1OSwzLjQ4IGMgLTE2Ljk3NiwtMjEuMTUgLTQ5LjY4LC0zMy41OSAtODcuNjY0LC0zMy4wNSIKICAgICAgICAgaWQ9InBhdGgxNiIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDgyMi42NTIsMTIyMS44OCBjIDExLC0wLjE2IDI2Ljg1Miw0Ljk1IDM5LjkxNCwzMC4xNyAyLjk3Nyw1Ljc1IDMuNjg0LDEzLjEzIDQuNDI2LDIwLjkzIDAuMzg3LDQuMDkgMS4wMzEsMTAuNiAyLjAxMiwxMy4wOCAxLjIzLDAuODEgNC4wNTgsMi4wMSA2LjA1OCwyLjg1IDcuNTI4LDMuMTggMTcuODM2LDcuNSAyMy4zNjgsMTguMiAzLjA5Myw1Ljk4IDQuMDY2LDExLjkxIDQuMTUyLDE3LjYgMC4wNTksNC4yNSAtMC4zNzksOC4zNiAtMC43OTcsMTIuMjUgLTAuNDMzLDQuMDkgLTAuODQsOC4wMyAtMC43NzcsMTIuMTEgMC4wMDgsMS4zOCAwLjA4NiwyLjc4IDAuMjMsNC4yMiAwLjcxNSw3LjA4IDEzLjQwNywyMi4zMSAyNC44MTMsMzIuMDggbCAtMTYuODc5LDE5Ljc2IGMgLTUuMjcsLTQuNDkgLTMxLjY0OSwtMjggLTMzLjgwNSwtNDkuMjMgLTAuODQ3LC04LjM2IC0wLjA5LC0xNS40NCAwLjU3MSwtMjEuNjggMC43OTYsLTcuNDQgMS4xNDgsLTExLjggLTAuNTg2LC0xNS4xNyAtMS4yMTUsLTIuMzIgLTYuMDc5LC00LjM3IC0xMC4zNzIsLTYuMTcgLTYuNjYsLTIuODIgLTE0LjIwMywtNS45OCAtMTguNDYsLTEzLjUyIC0zLjc3LC02LjY3IC00LjYwMiwtMTUuNDMgLTUuNDAzLC0yMy45MSAtMC4zNzEsLTMuOTEgLTAuOTM3LC05Ljc5IC0xLjY4NywtMTEuNTUgLTIuMjc4LC00LjQgLTQuNjg4LC03Ljk1IC03LjEwNiwtMTAuNiAtMS42OTksLTQuNDcgLTQuNTg2LC0xMC44MiAtOS40NzIsLTE3LjYzIGwgLTAuMiwtMTMuNzkiCiAgICAgICAgIGlkPSJwYXRoMTgiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSA3ODkuMDI3LDEyMzguNTQgMTQuNTYzLC0yMS41MiBjIDguNTgyLDUuOCAxNC43NjUsMTIuNDEgMTkuMjYyLDE4LjY1IDQuODg2LDYuODEgNy43NzMsMTMuMTYgOS40NzIsMTcuNjMgMC42NDEsMS42NyAxLjEyOSwzLjA4IDEuNDg1LDQuMTQgMi40NDEsNy4yNCAwLjgwOCwxNC4xNSAtMC42MjksMjAuMjYgLTEuNTA4LDYuMzcgLTIuMzM2LDEwLjQ4IC0wLjU0MywxNC4zMyAyLjA5Myw0LjUgNS41NzgsNy4xNyA5Ljk4LDEwLjUyIDUuMDI0LDMuODUgMTEuMjc4LDguNjQgMTUuMjcsMTYuNzMgNC45NDUsMTAuMDMgMi4zMDEsMjEuMTggLTAuMjY2LDMxLjk3IC0xLjc5Myw3LjU4IC0zLjY0NCwxNS40MiAtMi41MDgsMjEuMzUgbCAtMjUuNTI3LDQuOTQgYyAtMC41MzksLTIuOCAtMC43ODUsLTUuNTQgLTAuODI0LC04LjI2IC0wLjEyNSwtOC40OCAxLjgyLC0xNi42MyAzLjU3OCwtMjQuMDMgMC45ODQsLTQuMiAyLjQxLC0xMC4yIDIuMzcxLC0xMy4yNSAtMC4wMDgsLTAuNTQgLTAuMDYzLC0wLjk5IC0wLjE3NiwtMS4zMSAtMS4xOTksLTIuNDMgLTMuNTksLTQuMzMgLTcuNjk5LC03LjQ3IC01Ljc3NCwtNC40MSAtMTIuOTY5LC05LjkgLTE3Ljc2NiwtMjAuMiAtMi40NzIsLTUuMyAtMy4zNjMsLTEwLjQ3IC0zLjQyNSwtMTUuMjMgLTAuMDk0LC02LjIxIDEuMjE0LC0xMS43NyAyLjIyNiwtMTYuMDggMC40ODQsLTIuMDIgMS4xOTksLTUuMDMgMS4xODQsLTYuMjUgLTIuNzg1LC04LjE1IC03LjYwMiwtMTguNSAtMjAuMDI4LC0yNi45MiIKICAgICAgICAgaWQ9InBhdGgyMCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDY3NS42OCwxMjkzLjQyIGMgMS42ODMsLTMuMjMgMi43NDIsLTYuMjcgMy40NTMsLTkuMTMgMi41NTUsLTEuNjkgNi4zMDUsLTQuMjEgNy4wMjcsLTUuNDggMS4xMDYsLTMuMDQgLTAuMTA1LC0xMS42MSAtMC45MDYsLTE3LjI2IC0wLjI3NCwtMS44OCAtMC41MjQsLTMuNjcgLTAuNzQ2LC01LjQyIDYuMTAxLC02LjI4IDE1Ljc1OCwtMTMuNTkgMjAuOTc2LC0xNi4yOCBsIC0xMC4wNzQsLTE5LjQ2IGMgNC43NSwtNi45OSAxMC4zMDksLTEzLjk2IDE1LjM0NCwtMTkuNjcgbCAxOS40ODgsMTcuMjIgYyAtMTAuOTE4LDEyLjM0IC0xOC41MDQsMjQuMjkgLTIwLjI5NywyOS41MyAtMC4wMjMsMC4yMyAtMC4wNDMsMC40OCAtMC4wMzUsMC44MiAwLjAzNSwyLjI2IDAuNjQ5LDYuNTggMS4wODIsOS41OSAwLjcxMSw1LjA5IDEuNDk2LDEwLjUyIDEuNTY3LDE1LjkyIDAuMDc0LDQuODcgLTAuNDQyLDkuNyAtMi4wODYsMTQuMTYgLTMuMzA1LDguOTggLTExLjIxOSwxNC4yMSAtMTcuNTgyLDE4LjM4IC0zLjc1OCwyLjQ4IC04Ljg5OSw1Ljg3IC05LjEzNyw3Ljk1IC0wLjA0NywwLjU0IC0wLjA3LDEuMDYgLTAuMDY2LDEuNTggMC4wMzUsMi42MiAwLjg4Miw1LjI4IDIuNDA2LDkuNzcgMi4yMyw2LjU3IDUuMTc5LDE1LjI3IDUuMzU5LDI4LjAxIDAuMDE2LDEuNzIgMCwzLjUgLTAuMDksNS4zNyBsIC0yNS45NzIsLTEuMTcgYyAwLjUwNCwtMTAuODQgLTEuNjUzLC0xNy4xNyAtMy45MTEsLTIzLjg3IC0yLjE0LC02LjMxIC00LjU2NiwtMTMuNDYgLTMuNTU0LC0yMi41NCAwLjA0NywtMC40NSAwLjEzMywtMC44NSAwLjE5NSwtMS4yNyA1Ljk5NiwtMy4yOSAxMi45NDksLTcuOTYgMTcuNTU5LC0xNi43NSIKICAgICAgICAgaWQ9InBhdGgyMiIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDYyMS42MjEsMTM0OC4wNiBjIDAuMzU5LC01LjA3IC0wLjQ4OCwtOC42NiAtMS40NzYsLTEyLjgzIC0xLjY4NCwtNy4xIC0zLjc3NCwtMTUuOTUgMS45MjksLTI3Ljc3IDUuMDk0LC0xMC41NCAxNC4wMzksLTE1LjE2IDIwLjU2MywtMTguNTEgNS4yODUsLTIuNzEgOC4zNTUsLTQuNCAxMC4wMDgsLTcuNTggMi4wNjYsLTMuOTUgMS43ODUsLTYuNjYgMS4zMiwtMTEuMTUgLTAuNTc0LC01LjQ4IC0xLjM0OCwtMTMgMy4zMjQsLTIxLjE5IDcuNjA2LC0xMy4zNyAyNy42ODQsLTI3Ljg0IDM2LjIzNCwtMzIuMjkgbCAxLjg4NywzLjY1IDEwLjA3NCwxOS40NiBjIC01LjIxOCwyLjY5IC0xNC44NzUsMTAgLTIwLjk3NiwxNi4yOCAtMi4wMzEsMi4xIC0zLjY3Miw0LjA5IC00LjYyNSw1Ljc1IC0wLjQ1MywwLjggLTAuNDY1LDEuNzUgLTAuMDU5LDUuNjcgMC40MzQsNC4yIDAuOTc3LDkuOTQgLTAuNjkxLDE2Ljc0IC0wLjcxMSwyLjg2IC0xLjc3LDUuOSAtMy40NTMsOS4xMyAtNC42MSw4Ljc5IC0xMS41NjMsMTMuNDYgLTE3LjU1OSwxNi43NSAtMS4yNDIsMC42OCAtMi40NTMsMS4zMiAtMy41OSwxLjkgLTUuNDkyLDIuODMgLTcuODQ3LDQuMjIgLTkuMDQzLDYuNjkgLTEuNjM2LDMuNCAtMS40MSw0LjczIC0wLjA0MywxMC40OSAxLjE1Nyw0LjkxIDIuNzU4LDExLjYzIDIuMTA2LDIwLjY5IC0xLjIzOSwxNy4xNiAtMTQuMzIxLDMxLjcyIC0yNC44NCw0My40MyBsIC03Ljc1NCw4Ljk2IC0yMC4zNTUsLTE2LjE4IDguNzY1LC0xMC4xNSBjIDcuODcxLC04Ljc1IDE3LjY0OSwtMTkuNjQgMTguMjU0LC0yNy45NCIKICAgICAgICAgaWQ9InBhdGgyNCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDczNi40MywxMzI4LjggYyAtMC4yODUsLTE5Ljk0IDQuMTYsLTQ2Ljg1IDI3LjU1LC00Ny4xNyAyMy4zOTksLTAuMzQgMzAuMDIsMjkuODQgMzAuMiw0Mi4yMiAwLjE1NiwxMC45NSAtMTUuNzk3LDU3LjQ4IC0xOS4xMTQsOTkuNDkgLTUuMTQ0LDAuMTQgLTkuNDY0LDEuNjkgLTEzLjA1NCw0LjEgLTQuMjgyLC00Ni45OSAtMjUuMzI0LC04MC40MiAtMjUuNTgyLC05OC42NCIKICAgICAgICAgaWQ9InBhdGgyNiIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDExMjQuNzgsMTYwNS43NCBjIC0zNC42OSwtMS42NyAtMzM3LjgxNSwtMjYuNjEgLTMzNy44MTUsLTI2LjYxIGwgLTUuODkxLDQyLjg3IGMgMCwwIDMwMC4xOTYsNDcuNzMgMzM1LjQ3Niw1My4yIDM1LjMsNS40NCA2MCwtOC45OCA1OS42OCwtMzEuMTkgLTAuMzEsLTIyLjIgLTE2Ljc3LC0zNi42IC01MS40NSwtMzguMjcgeiBtIC0xNi4yNSw5Ni4xMSBjIC01MS4yNywtNy40IC0yODUuMTksLTQ2LjA2IC0zMDcuODExLC01MC4wNyAtMzMuMjgxLC01Ljg5IC00MC41MjgsMjQuMzkgLTU1LjYwMiwzMS42NiAwLDAgMjAuNTEyLC0xMzEuNzUgMjEuNjY4LC0xNDEuNTMgNC4xNjgsLTM1LjE4IC0yMC4xMDUsLTUyLjk0IC0yMC40NzMsLTc5LjIxIC0wLjEzNiwtOS41MSAzLjc0NywtMjcuMjUgMTUuNywtMzUuMjYgMy41OSwtMi40MSA3LjkxLC0zLjk2IDEzLjA1NCwtNC4xIDAuMTcyLDAgMC4zMTcsLTAuMDQgMC40ODEsLTAuMDQgMjIuNzQ2LC0wLjM0IDI3LjkzLDIyLjM0IDI4LjE4MywzOS42OCAwLjM3OSwyNi44MSAtMTIuMzk4LDQyLjQyIC0xMi4zMTIsNDguOTEgMC4wOSw2LjUgNS42MjUsMTQgMjYuMjUsMTYuOTcgMjAuNjI5LDIuOTUgMjc4LjQ4Miw0My45OCAzMTkuMTkyLDQ5LjkgNDAuNzEsNS45MyA3MS4yMywzOC44IDY1LjIxLDczLjAxIC02LjAxLDM0LjIxIC00Mi4yNCw1Ny40NyAtOTMuNTQsNTAuMDgiCiAgICAgICAgIGlkPSJwYXRoMjgiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxNjYyLjA1LDE0MjcuODIgYyAtNy41LC0zNi4wNCAtMjMuMDYsLTcwLjUgLTIzLjE5LC04MC4wMiAtMC4xOCwtMTIuMzggMy4wNiwtNDMuMzggMjYuNDYsLTQzLjcyIDIzLjQsLTAuMzIgMzEuMTIsMjcuMDcgMzEuNCw0Ny4wNCAwLjIyLDE1Ljc4IC0xMy4yMiw0MS40NyAtMTguNDksNzguNCAtMy40MSwtMS40NCAtNy4yOSwtMi4yNCAtMTEuNzIsLTIuMTcgLTEuNTksMC4wMiAtMy4wNSwwLjIgLTQuNDYsMC40NyIKICAgICAgICAgaWQ9InBhdGgzMCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDEzMjAuMzQsMTY4NC43NiBjIDM1LjE2LC02LjI5IDM1MS40MiwtNjYuMTkgMzUxLjQyLC02Ni4xOSBsIC03LjEyLC00Mi42OSBjIDAsMCAtMzI3LjQ5LDMzLjM1IC0zNjIuMTIsMzYuMDEgLTM0LjYyLDIuNjUgLTUwLjE3LDE0Ljc5IC00OS44NSwzNi45OSAwLjMyLDIyLjIxIDI4LjI0LDQyLjkzIDY3LjY3LDM1Ljg4IHogbSAtMzEuOTgsLTEwMC4yOSBjIDQwLjUyLC03LjA3IDMyNC41LC01OC41NCAzNDUuMDQsLTYyLjEyIDExLjczLC0yLjAyIDIxLjI0LC05LjkxIDIxLjE4LC0xMy4xMSAtMC4wNCwtMy4yMSAtMTIuNzYsLTE1LjA0IC0xMy4wNSwtMzYuMTQgLTAuMjQsLTE2LjEyIDEuOTMsLTQxLjUzIDIwLjUyLC00NS4yOCAxLjQxLC0wLjI3IDIuODcsLTAuNDUgNC40NiwtMC40NyA0LjQzLC0wLjA3IDguMzEsMC43MyAxMS43MiwyLjE3IDE0LjExLDYuMDEgMTkuODgsMjMuMzkgMjAuMTEsMzkuMjkgMC41MywzNy4xMyAtMTguODgsMzAuMSAtMTMuNzEsNjUuMTUgMS40MSw5Ljc1IDIxLjk1LDEzNi45MiAyMS45NSwxMzYuOTIgLTE1LjI3LC02Ljg0IC0xOS42NywtMzIuOTYgLTUyLjc3LC0yNi4xMyAtMjIuNSw0LjY0IC0yODIuODIsNTYuNTIgLTMzMy44OSw2NS4zNyAtNTEuMDYsOC44NiAtODYuMDgsLTE3LjI3IC05My4wNiwtNTEuMyAtNi45OSwtMzQuMDIgMjAuOTYsLTY3LjI3IDYxLjUsLTc0LjM1IgogICAgICAgICBpZD0icGF0aDMyIgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTc3Ni4zLDEzODUuNjMgYyAwLjE0LC0zLjY1IDAuMTksLTUuNjYgLTEuODksLTEwLjE0IC0zLjg4LC04LjM0IC0xMC42NSwtMTguNzEgLTIwLjc0LC0yMC45MyBsIDUuNTUsLTI1LjQgYyAxMS4zMSwyLjQ5IDI3LjIsMTAuNjEgMzguNzQsMzUuMzIgNC43NSwxMC4xNSA0LjQ5LDE3LjA1IDQuMzIsMjIuMDkgLTAuMTcsNC4wNyAtMC4yMiw1Ljc2IDMuMzEsMTEuMTUgMi41MywzLjgzIDMuMjEsNCA2LjE2LDQuNzMgNi43LDEuNjYgMTQuNCw0LjQ0IDIxLjE2LDE2LjYgNy43MiwxMy45MSA1LjQ1LDI1LjU5IDMuOCwzNC4xMyAtMC44OSw0LjY4IC0xLjYxLDguMzcgLTAuOTYsMTIuMTcgMS4wMSw1LjgxIDUuMTgsMTAuMiAxMy4wNywxOC4xMiA0LjMxLDQuMyA5LjIsOS4xOCAxNC4xNCwxNS4yOCBsIC0yMC4yMSwxNi4zNiBjIC00LjA5LC01LjA1IC04LjI2LC05LjIzIC0xMi4zMSwtMTMuMjYgLTguNzgsLTguNzkgLTE3Ljg1LC0xNy44OCAtMjAuMjksLTMyLjA4IC0xLjQ4LC04LjQ3IC0wLjA4LC0xNS43MiAxLjA0LC0yMS41MSAxLjQ3LC03LjU5IDEuOTgsLTExLjE3IC0xLjAxLC0xNi41OCAtMS44MywtMy4yOSAtMS44OCwtMy4zMSAtNC42NCwtMy45OCAtNi41OCwtMS42MyAtMTQuMjEsLTQuMzIgLTIxLjcsLTE1Ljc0IC03LjQzLC0xMS4zNyAtNy44LC0xOC45NSAtNy41NCwtMjYuMzMiCiAgICAgICAgIGlkPSJwYXRoMzQiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxNzMxLjE4LDEzNDIuMTUgYyAxMi42MiwxMC43OSAxNi41MywxNC43IDIyLjQ1LDMyLjg4IDMuODksMTEuODEgMy4xNiwxOS42OCAyLjU1LDI1Ljk5IC0wLjQ2LDUuMDMgLTAuODEsOC42MyAxLjAxLDE1LjA3IDAuOTMsMy4yOSAxLjIzLDMuNDUgNC44OSw1LjM0IDUuNTksMi44OSAxNC45Myw3Ljc0IDE5LjI4LDIzLjgxIDMuOTgsMTQuNzMgLTAuMTYsMjQuMDkgLTMuMTgsMzAuOTQgLTIuMzUsNS4zMiAtMy43Nyw4LjUzIC0yLjQsMTUuNDYgbCAtMjUuNTIsNSBjIC0yLjkzLC0xNC45MyAxLjE2LC0yNC4xOSA0LjE0LC0zMC45NiAyLjM3LC01LjM1IDMuNDUsLTcuOCAxLjg2LC0xMy42NyAtMS4zNywtNS4wMSAtMi4yOCwtNS40OSAtNi4xMiwtNy40OCAtNS4yMywtMi43MiAtMTMuOTksLTcuMjQgLTE3Ljk3LC0yMS4zOCAtMy4xNCwtMTEuMDggLTIuNDIsLTE4LjU0IC0xLjg4LC0yNC41NCAwLjUxLC01LjMgMC44MiwtOC44MSAtMS4zNSwtMTUuNSAtMy45NCwtMTIuMDMgLTQuMzUsLTEyLjM4IC0xNC42NSwtMjEuMTggbCAtNi4xNCwtNS4yOSAxNy4xMSwtMTkuNTcgNS45Miw1LjA4IgogICAgICAgICBpZD0icGF0aDM2IgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTU0MCwxNDMxLjMyIGMgMi43NCwtMTMuMDYgMTEuOTUsLTE4LjkyIDE4LjY2LC0yMy4yIDYuMTMsLTMuOTEgOC4xNywtNS41MiA4Ljk3LC05LjU5IDEuMjcsLTYuNDEgMC42NSwtOC4xOSAtMC4zMiwtMTAuOSAtMS44OSwtNS40MiAtMy4zNiwtMTEuMDYgLTAuNzEsLTIwLjkxIDQuNjUsLTE3LjE4IDkuNzcsLTIzLjAxIDI2Ljg3LC00MC41OCBsIDE4LjYyLDE4LjExIGMgLTE2LjE3LDE2LjY0IC0xNy41MSwxOC41NyAtMjAuMzksMjkuMjUgLTAuNzcsMi44NiAtMC43LDMuMDcgMC4xNSw1LjUgMS45OSw1LjY2IDMuNzUsMTIuMjYgMS4yOCwyNC41OCAtMy4wMiwxNS4zMiAtMTMuNTQsMjIuMDMgLTIwLjQ5LDI2LjQ2IC01LjI4LDMuMzYgLTYuNzcsNC41NiAtNy4xOSw2LjY0IC0wLjg4LDQuMTQgMC4xOCw3LjI4IDIuNDUsMTMuNDQgMi43Niw3LjQ3IDYuMiwxNi43OCA0LjgxLDMwLjE1IGwgLTI1Ljg0LC0yLjY4IGMgMC43NSwtNy4zNSAtMS4wNiwtMTIuMjYgLTMuMzUsLTE4LjQ1IC0yLjY2LC03LjE5IC01Ljk3LC0xNi4xNiAtMy41MiwtMjcuODIiCiAgICAgICAgIGlkPSJwYXRoMzgiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxNTIyLjU1LDE0MzguNjQgYyAwLjA2LDQuNjEgLTAuNTcsMTAuMDUgLTIuNjQsMTYuNSAtNS43OCwxNy44IC0xMS45NSwyNC43MSAtMTkuMDgsMzIuNzEgbCAtNy4xNyw4LjM1IC0yMC4yNSwtMTYuMjkgOC4wMSwtOS4zNyBjIDYuNDMsLTcuMiA5LjY2LC0xMC44MyAxMy43NSwtMjMuNDIgMi4xNCwtNi42MyAxLjQ0LC0xMC4wNiAwLjM1LC0xNS4yOSAtMS4zOSwtNi42OCAtMy4zLC0xNS44MyAyLjI2LC0yOC44NyA2LjE2LC0xNC4zNyAxNS42NSwtMTguMDIgMjEuOTIsLTIwLjQ0IDQuMTgsLTEuNiA0Ljk0LC0xLjg5IDYuMzQsLTUuMDYgMi40NSwtNS40NSAyLjA5LC03IDEuNDcsLTkuODEgLTAuODIsLTMuNyAtMi4yNCwtOS45MiAxLjI3LC0xOC4xNCA0LjQ4LC0xMC42MyAxNy4yMywtMzUuNzEgMzguMzksLTM5LjEzIGwgNC4xNSwyNS42OCBjIC01LjIsMC44MiAtMTMuMzgsMTEuMTggLTE4LjYxLDIzLjU4IGwgLTAuMjEsMC41OSAwLjM4LDEuNzMgYyAwLjU3LDIuNTggMS4wNyw1LjMgMS4xLDguNCAwLjA4LDQuNyAtMC44OSwxMC4zIC00LjE5LDE3LjY5IC01LjgsMTIuOTkgLTE0LjgxLDE2LjQ2IC0yMC43NiwxOC43NSAtNC40NSwxLjcgLTUuNSwyLjExIC03LjM0LDYuMzkgLTEuMjUsMi45MyAtMS42OCw1IC0xLjY2LDcuMTEgMC4wMywxLjg0IDAuNDIsMy43MSAwLjk0LDYuMjQgMC42OCwzLjMyIDEuNTEsNy4yNiAxLjU4LDEyLjEiCiAgICAgICAgIGlkPSJwYXRoNDAiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxNjkwLjI2LDEyODQuNTYgYyAtMjUuNzgsLTIwLjI2IC04Mi44NCwtMjEuMDUgLTExMi43Miw2Ljg4IGwgLTYuMjgsNS45IC03Ljg5LC0zLjUyIGMgLTExLjY2LC01LjIxIC0yNy4xNCwtNS40NCAtMzkuNTcsLTUuNjIgLTE1LjgsLTAuMjMgLTI4LjI4LC0wLjQgLTM0Ljg0LC0xMC4yOCAtNC43NSwtNy4xOSAtNC40NSwtMTcuMDUgMC44NSwtMjcuMDkgMC44NiwtMS42MiAxLjg4LC0zLjI3IDMuMDIsLTQuOSBsIDU2LjcsLTAuODEgYyAtMjEuMSwwLjMyIC0zMiwxMC40MSAtMzYsMTYuNzYgMy4yOCwwLjIxIDcuMjYsMC4yOSAxMC42NSwwLjMyIDEyLjQ3LDAuMiAyNy40NSwwLjY4IDQxLjc0LDUuMTUgMTUuMzQsLTEyLjAzIDM0LjE2LC0xOS4wNiA1My40NCwtMjEuODkgMTQuMiwxNi4yMiAzNy45MywyMS45MSA1MS43LDIxLjcgbCAtMC4yNywtMTkuNDUgYyAxMC43OSwyLjY3IDIwLjc1LDYuNjcgMjkuMTMsMTEuOTMgMTMuNzMsLTYuMTMgMzIuOTQsLTE4LjE2IDQ2LjI3LC0yNi41MiAxMS42MSwtNy4yNiAxNy4zNSwtMTAuODMgMjEuMTcsLTEyLjM1IDExLjczLC00LjcyIDYwLjc5LC05LjQ0IDkxLjIzLC05Ljg5IGwgMC4zNywyNi4wMSBjIC0zNC4zNiwwLjQ3IC03NS40OCw1LjYgLTgxLjk1LDguMDIgLTIuMDYsMC44OCAtMTAuMzQsNi4wNyAtMTcuMDIsMTAuMjUgLTE3LjM0LDEwLjg3IC00MS4xMSwyNS43NSAtNTcuNCwzMS40NSBsIC02LjczLDIuMzQgLTUuNiwtNC4zOSIKICAgICAgICAgaWQ9InBhdGg0MiIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDE1NDkuNTMsMTI0NS4xMiAtNTYuNywwLjgxIC00MC4yNiwwLjU4IGMgLTQzLjY1LDAuNjIgLTQ4LjY5LC0yNi4wNSAtNDguODMsLTM1LjQ1IC0wLjA0LC0yLjU4IDAuMjMsLTUuOTEgMS4wNiwtOS40NyBsIDM5LjQzLC0wLjU3IGMgLTExLjU5LDAuMTcgLTE1LjIyLDQuNzYgLTE1LjE0LDkuNjIgMC4wNyw0Ljg1IDQuNTcsMTAuMTMgMjMuMTMsOS44NyBsIDE1NS42NCwtMi4yIGMgMC45OCwxMC41NSA0Ljg1LDE5LjA2IDEwLjM4LDI1Ljg1IGwgLTY4LjcxLDAuOTYiCiAgICAgICAgIGlkPSJwYXRoNDQiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxNjM0LjA0LDEyMTcuOTQgMy43MywtMC4wNiA3Ny45NSwxNy4wNCAtNDQuMiw4LjQ3IC0wLjgxLDAuMDIgLTAuMDIsLTIuMjQgYyAtMC4zNCwwLjAxIC0zMi41MywtMS4wMSAtMzYuNjUsLTIzLjIzIgogICAgICAgICBpZD0icGF0aDQ2IgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTM4OS42NCwxMjAxLjggYyAtMjUuMDYsMC4zNiAtNDIuMTgsLTE5LjA3IC00Mi40MywtMzcuNDUgLTAuMjUsLTE3LjUxIDE1LjAyLC0zOC45IDQyLjYyLC0zOS4yOSBsIDguMDksLTAuMTEgYyAxLjk5LDkuOTYgMTAuMTUsMjQuMDYgMzkuOCwyNS4yNiBsIDAsMC4xNyAtNDcuNTEsMC42NyBjIC05LjczLDAuMTQgLTE2Ljg0LDkuODEgLTE3LDEyLjk4IDAuMDMsMy4zOSA0LjksMTEuOTQgMTYuMDcsMTEuNzggbCAxNjguODYsLTIuNDEgMC4zOCwyNiAtMTE0LjI5LDEuNjIgLTM5LjQzLDAuNTcgLTE1LjE2LDAuMjEiCiAgICAgICAgIGlkPSJwYXRoNDgiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxMzk3LjkyLDExMjQuOTUgYyAtMC40MywtMi4xIC0wLjYsLTQuMDUgLTAuNjEsLTUuNjIgLTAuMzEsLTIxLjMyIDE4LjIyLC0zOC45NCA1MC4zMiwtMzkuNCBsIDAuNiwwIGMgNS4wOSwxNC4zMyAyMi45OSwyNC4yMyA0Ni42NCwyNS4xNyBsIDAsMC4xNiAtNDYuODYsMC42NiBjIC0xNi4xMSwwLjI0IC0yNC43OCw4Ljc0IC0yNC43MSwxMy4wMyAwLjA1LDMuNjkgMTAuMDIsNS41IDE5LjgzLDUuMzYgbCAxMTQuMjksLTEuNjIgMC4zNywyNS45OSAtMTE0LjI4LDEuNjMgYyAtMi4wNCwwLjAxIC0zLjk0LC0wLjAyIC01Ljc5LC0wLjEgLTI5LjY1LC0xLjIgLTM3LjgxLC0xNS4zIC0zOS44LC0yNS4yNiIKICAgICAgICAgaWQ9InBhdGg1MCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDE0NDguMjMsMTA3OS45MyBjIC0wLjkyLC0yLjYxIC0xLjQ4LC01LjMyIC0xLjUxLC04LjE5IC0wLjIzLC0xNi4zIDE0LjEzLC0zNC4xOCA0Ni43MywtMzcuMzggMjMuNTksLTIuMjkgMTI1LjUxLC02Ljk2IDE0NC4yLC03LjIzIDE1LjIsLTAuMiA3OS4wOSwwLjk0IDExMy42LDEwLjQ2IDEwLjI4LDIuODcgMTguODksNi43MiAyNy4yMiwxMC40NiAxNy45OSw4LjA1IDM2LjU4LDE2LjM5IDc2Ljc1LDE1LjgxIGwgMC4zNywyNiBjIC00NS45MiwwLjY1IC02OC4xNSwtOS4zMSAtODcuNzUsLTE4LjEgLTcuNzksLTMuNSAtMTUuMTQsLTYuNzggLTIzLjUxLC05LjEgLTI5LC04LjAxIC04OC4wOSwtOS43OCAtMTA2LjM0LC05LjU0IC0xNy4yNCwwLjI1IC0xMTkuMTcsNC44OSAtMTQyLjAzLDcuMTIgLTE2LjUyLDEuNjEgLTIzLjI5LDguMDUgLTIzLjI1LDExLjEzIDAuNjEsMS41OCA4LjY0LDguMDggMjYuOTQsNy44MiBsIDEwNC42NywtMS40OCAtMjQuNjcsMjYuMzUgLTc5LjY0LDEuMTMgYyAtMS43NCwwLjAyIC0zLjQ1LC0wLjAyIC01LjE0LC0wLjA5IC0yMy42NSwtMC45NCAtNDEuNTUsLTEwLjg0IC00Ni42NCwtMjUuMTciCiAgICAgICAgIGlkPSJwYXRoNTIiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxNjE5LjM2LDEyNDUuNDYgYyAtMC4zOCwtMC40MyAtMC43NSwtMC44NSAtMS4xMiwtMS4zIC01LjUzLC02Ljc5IC05LjQsLTE1LjMgLTEwLjM4LC0yNS44NSAtMC4xNCwtMS40NSAtMC4yMywtMi45MiAtMC4yNSwtNC40NSAtMC4zNCwtMjQuMTkgMTEuNzcsLTY2LjUzIDk2LjkxLC03OC41MiBsIDMuNjMsMjUuNzQgYyAtMjguMDYsMy45NSAtNzUuMDYsMTYuMDMgLTc0LjU2LDUyLjQxIDAuMDIsMS41NyAwLjE4LDMuMDUgMC40NSw0LjQ1IDQuMTIsMjIuMjIgMzYuMzEsMjMuMjQgMzYuNjUsMjMuMjMgbCAwLjAyLDIuMjQgMC4wOCw0LjMgMC4yNywxOS40NSBjIC0xMy43NywwLjIxIC0zNy41LC01LjQ4IC01MS43LC0yMS43IgogICAgICAgICBpZD0icGF0aDU0IgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjwvZz48L2c+PC9zdmc+">'},
+ GHS06:{nome:"Tossicità acuta", svg:'<img alt="GHS06" style="width:100%;height:100%;display:block" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+PHN2ZwogICB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iCiAgIHhtbG5zOmNjPSJodHRwOi8vY3JlYXRpdmVjb21tb25zLm9yZy9ucyMiCiAgIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyIKICAgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogICB3aWR0aD0iNzAiCiAgIGhlaWdodD0iNzAiCiAgIGlkPSJzdmc2IgogICB4bWw6c3BhY2U9InByZXNlcnZlIj48ZGVmcyBpZD0iZGVmczYiIC8+PGcKICAgICB0cmFuc2Zvcm09Im1hdHJpeCgxLjI1LDAsMCwtMS4yNSwwLDcwKSIKICAgICBpZD0iZzEwIj48ZwogICAgICAgdHJhbnNmb3JtPSJzY2FsZSgwLjAyMiwwLjAyMikiCiAgICAgICBpZD0iZzEyIj48cGF0aAogICAgICAgICBkPSJNIDIyNDYuODgsMTIyMC4xMyBDIDIxNjIuMzIsMTEzNS41OSAxMzA0LjY1LDI3Ny44OTEgMTIyMC4xLDE5My4zMzIgMTEzNS41NSwyNzcuODkxIDI3Ny44NzUsMTEzNS41OSAxOTMuMzI4LDEyMjAuMTMgYyA4NC41NDcsODQuNTYgOTQyLjIyMiw5NDIuMjUgMTAyNi43NjIsMTAyNi43OSA4NC41NSwtODQuNTQgOTQyLjIzLC05NDIuMjMgMTAyNi43OSwtMTAyNi43OSB6IE0gMCwxMjIwLjEzIDEyMjAuMSwwIDI0NDAuMiwxMjIwLjEzIDEyMjAuMDksMjQ0MC4yNSAwLDEyMjAuMTMiCiAgICAgICAgIGlkPSJwYXRoMTQiCiAgICAgICAgIHN0eWxlPSJmaWxsOiNlZjJmMzI7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxNzQ1LjIxLDk4OC4zNTkgMTguMzUsOC43IGMgMi44OCwxLjMzOSA1LjUyLDIuNjAxIDcuOTksMy43ODEgMS41Niw3LjQyIDIuNTYsMTIuMjIgMi42MSwxMi40IDIuMDQsOS43MiAtNC4xNiwxOS4yNiAtMTMuODgsMjEuMzIgLTkuNywyLjA1IC0xOS4yNCwtNC4xNyAtMjEuMjksLTEzLjg4IC0wLjcxLC0zLjM0IC0xNy4zMSwtODEuOTgxIC0yMC45NywtMTAzLjkxIC0yLjEyLC0xMi43NTggLTE3LjQzLC0yMS4zMjkgLTMwLjQxLC0yMS4zMjkgLTIxLjEyLDAgLTQxLjcsMjQuMiAtNDIuODUsMzMuMzI5IC02Ljk4LDU1LjY2IC00MC41Niw4Mi43OCAtNjcuNDcsOTUuNzMgbCAtMTczLjU5LDgzLjQ4IGMgLTguMzQsLTkuMDcgLTE3Ljg1LC0xNy45MiAtMjguNDYsLTI2LjIgbCAxODYuNDYsLTg5LjY3MSBjIDI3Ljg2LC0xMy4zNzkgNDMuMzYsLTM1LjU3IDQ3LjM5LC02Ny44MiAzLjE5LC0yNS40OCAzOC4zNCwtNjQuODAxIDc4LjUyLC02NC44MDEgMjguMTYsMCA2MC41MiwxOS4yMjMgNjUuODgsNTEuMzcxIDEuNDMsOC42MSA1LjA4LDI3LjAxMiA4Ljk0LDQ1Ljg3OSBsIC0xLjYsLTAuNzY5IC0xNS42MiwzMi4zOSIKICAgICAgICAgaWQ9InBhdGgxNiIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDE2MDYuMTEsMTA0OS44OSA4Ljg3LC00LjM0IGMgMTAuNDksLTUuNjYgMTcuMDUsLTcuOTggMzkuOTEsLTcuOTggMTUuODcsMCAyOS45NSw1LjI3IDQzLjU2LDEwLjM2IDE1LjA2LDUuNjIgMzAuNjIsMTEuNDUgNTAuOTMsMTEuNDUgMjQuMDUsMCA1NC43MiwtMTYuOTEgNTQuNzIsLTMwLjE3IDAsLTEwLjc2IC0xLjMxLC0xMy40NSAtMzIuNTUsLTI4LjM3IC0yLjQ3LC0xLjE4IC01LjExLC0yLjQ0MiAtNy45OSwtMy43ODEgbCAtMTguMzUsLTguNyAxNS42MiwtMzIuMzkgMS42LDAuNzY5IDE2LjQzLDcuNzkzIGMgMzguMTQsMTcuOTMgNjEuMTksMjguNzM5IDYxLjE5LDY0LjY3OSAwLDQwLjM3IC01My42OSw2Ni4xMiAtOTAuNjcsNjYuMTIgLTI2LjgsMCAtNDcuMTcsLTcuNjEgLTYzLjUxLC0xMy43MyAtMTEuNiwtNC4zNCAtMjEuNjEsLTguMDggLTMwLjk4LC04LjA4IC0xNi4wMywwIC0xNy42MSwwLjg1IC0yMi44MywzLjY2IGwgLTExLjk4LDUuODMgYyAtMTIuNjQsNS4zMyAtMTE3LjU5LDU1LjM2IC0xNzkuMjQsODQuODcgLTMuMzMsLTEwLjMgLTguNjMsLTIxLjI0IC0xNS43NCwtMzIuMzEgMzYuNjgsLTE3LjU0IDE2Ni4wNSwtNzkuMzggMTgxLjAxLC04NS42OCIKICAgICAgICAgaWQ9InBhdGgxOCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDE0NTAuMzgsMTMwMS43MSAtNS4zMywtMy4yMiAwLC0zMS42NSBjIDI5LjA1LDEzLjI5IDE0MC42Myw2NC40MSAxNjguMDcsNzguNTIgMzEuMDUsMTUuOTggNTQuNjQsNTAuMTkgNjguNzUsNzAuNjQgbCA1LjQyLDcuNzMgYyA5LjM0LDEyLjg2IDI4LjgzLDI3Ljg5IDUyLjk2LDI3Ljg5IDcuOTUsMCAxMS4zOCwtMi42IDEzLjI3LC00LjU2IDExLjU4LC0xMS45NCAxMC40NiwtNDYuOSA5LjY2LC03Mi40MyBsIC0wLjQ1LC0yMC4yNSBjIC0wLjIsLTkuOTIgNy42NSwtMTcuNzUgMTcuNTcsLTE3Ljk2IDkuOTIsLTAuMjEgMTguMTUsOC4wNCAxOC4zOCwxNy45NiBsIDAuMTYsNy4yMiBjIC0yLjc2LDcuNTQgLTkuNDksMTguMTMgLTIxLjQ0LDIzLjk4IGwgMTUuNzUsMzIuMyBjIDIuMDgsLTEuMDEgNC4wOCwtMi4xNCA2LjAxLC0zLjMxIC0xLjMyLDIyLjMzIC02LjAyLDQzLjI2IC0xOS44LDU3LjUgLTkuOTgsMTAuMjcgLTIzLjEzLDE1LjQ5IC0zOS4xMSwxNS40OSAtMzcuNTksMCAtNjcuMDMsLTIyLjA0IC04Mi4wNSwtNDIuNjggbCAtNS45MiwtOC40OCBjIC0xMS4zOSwtMTYuNSAtMzIuNTgsLTQ3LjIzIC01NS42MiwtNTkuMDkgLTE2LjU3LC04LjUyIC02NS4zOSwtMzEuMjQgLTEwNy4wMywtNTAuNDYgLTkuMzksLTYuODMgLTE5LjIzLC0xMi44NSAtMjguNzYsLTE4LjY4IGwgLTEwLjQ5LC02LjQ2IgogICAgICAgICBpZD0icGF0aDIwIgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTc3Ny40LDEzODUuNTggYyAxMS45NSwtNS44NSAxOC42OCwtMTYuNDQgMjEuNDQsLTIzLjk4IDEsLTIuNzUgMS41LC01LjEgMS41LC02LjYzIGwgMCwtMzQuNiBjIDAsLTkuODIgLTIuODUsLTIxLjUxIC0xNi40MSwtMjEuNTEgLTExLjE1LDAgLTI1LjM5LDYuOTQgLTM5LjE0LDEzLjY1IC0xNS44Niw3Ljc0IC0zMC44NSwxNS4wNSAtNDYuMTgsMTUuMDUgbCAtMi41OSwwLjEgYyAtOC45NywwLjQyIC0yNy42MywxLjMgLTUzLjksLTEwLjk5IGwgLTAuNTEsLTAuMjUgLTE5Ni41NiwtOTkuNTUgMCwtMjUuMDggYyAwLC01LjA4IC0wLjcxLC0xMC41NCAtMi4wNiwtMTYuMjYgNDIuMjIsMjEuMzkgMjEzLjc2LDEwOC4yNiAyMTQuNDcsMTA4LjYyIDE4LjE3LDguNDggMjkuNCw3Ljk3IDM2Ljg1LDcuNjEgbCA0LjMsLTAuMTQgYyA3LjAzLDAgMTguOTIsLTUuNzkgMzAuNDIsLTExLjQxIDE2LjYxLC04LjEgMzUuNDUsLTE3LjI5IDU0LjksLTE3LjI5IDMwLjgzLDAgNTIuMzYsMjMuNjMgNTIuMzYsNTcuNDUgbCAwLDM0LjYgYyAwLDE4Ljc5IC0xMi45OSw0NC45NyAtMzcuMTMsNTkuNiAtMS45MywxLjE3IC0zLjkzLDIuMyAtNi4wMSwzLjMxIGwgLTE1Ljc1LC0zMi4zIgogICAgICAgICBpZD0icGF0aDIyIgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTM3OC4yMSwxMzgzLjk0IGMgNTkuOTEsMCA4NS4xMiw3NS4yMiA4NS4xMiw5NC41OCAwLDE5LjM3IC0xNS4zLDI3LjQ3IC0yNC4zMiwyNy40NyAtOC45OSwwIC0xMDEuNzcsMCAtMTEzLjk0LDAgLTEyLjE2LDAgLTQxLjQ0LC05LjkgLTQxLjQ0LC0yOC44MSAwLC03LjEgNS4zMSwtMjIuNjYgMTYuNzYsLTM3LjgyIDE5LjcyLC0yNi4xNCAzNi44NSwtNTUuNDIgNzcuODIsLTU1LjQyIgogICAgICAgICBpZD0icGF0aDI0IgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gOTk0LjM3NSwxODEyLjkzIGMgLTEwLjU3LC0xMC4zOSAtMjEuNTIsLTIxLjE1IC0zMy44ODcsLTMyLjQ0IGwgLTE2LjE3NiwtMTQuNjkgYyAtNDguODgyLC00NC4yNyAtODQuMTk5LC03Ni4yNSAtODQuMTk5LC0xMTAuNTMgMCwtNTcuNSAzNS40NjEsLTEwOC43MiA2MS4zNzUsLTE0Ni4xMyBsIDQuNTg2LC02Ljc5IGMgMi4zNCwxNi42NSA0LjYzMywyOS45IDUuODk5LDM0Ljk0IC0zLjM4MywxNS40MSAtNS44MjEsMjUuNzkgLTcuNTc4LDMzLjAxIC0xNS4zOTEsMjYuMDkgLTI4LjM0LDU1LjQ1IC0yOC4zNCw4NC45NyAwLDE4LjM0IDM1LjE2OCw1MC4xOCA3Mi4zODMsODMuODkgbCAxNi4yODUsMTQuNzkgYyAxMi44NTUsMTEuNzMgMjQuMDM3LDIyLjcyIDM0Ljg0NywzMy4zMiAyNC42MiwyNC4yIDQ0LjA4LDQzLjMxIDY2LjcxLDU0Ljc4IDUxLjAzLDI1Ljg3IDk3LjM0LDM1LjQgMTQ1Ljc0LDM1LjQgOTkuOTQsMCAxNDguNDgsLTQxLjY4IDIwOS45MSwtOTcuNjMgbCAzMi41OSwtMjkuMjIgMTIuMTUsLTEwLjU0IGMgMzkuMDksLTMzLjg2IDc2LjAyLC02NS44NSA3Ni4wMiwtODQuNzkgMCwtMjMuNSAtOC4yMiwtNDYuOSAtMTkuMzMsLTY4LjYzIC0xLjE3LC03LjM0IC0zLjM1LC0xNi45OCAtNy4zNiwtMzQuODQgMCwwIC02Ljk4LC0zMS4yOCAtOC40OSwtMzguMDcgMC44LC0zLjIxIDEuOTcsLTguMDggMy4yNywtMTQuMTYgbCA2LjQ2LDkuNTcgYyAyNS45MSwzNy40MSA2MS4zOCw4OC42MyA2MS4zOCwxNDYuMTMgMCwzNS4zNiAtMzcuMDgsNjcuNSAtODguNDEsMTExLjk2IGwgLTEyLjA4LDEwLjQ4IC0zMiwyOC42OSBjIC02MS44NCw1Ni4zMSAtMTIwLjI1LDEwOS41IC0yMzQuMTEsMTA5LjUgLTUzLjUxLDAgLTEwNi41LC0xMy42NiAtMTYxLjk5LC00MS44IC0yNy42LC0xMy45OCAtNDkuODcsLTM1Ljg2IC03NS42NTUsLTYxLjE3IgogICAgICAgICBpZD0icGF0aDI2IgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTUzNiwxNTUxLjggYyA0LjAxLDE3Ljg2IDYuMTksMjcuNSA3LjM2LDM0Ljg0IDEuMjgsOC4wMiAxLjM3LDEzLjI4IDEuMzcsMjMuNDQgMCwzOC43IC0xMC43LDU1LjQgLTUwLjIxLDk2LjY5IGwgLTI1Ljk4LC0yNC44NCBjIDM3LjAzLC0zOC42OSA0MC4yNSwtNDYuOTUgNDAuMjUsLTcxLjg1IDAsLTE1LjQ4IDAsLTE1LjQ4IC03Ljg2LC01MC4zOSBsIC0xMC40MywtNDYuNzggMS4yMSwtNC4yNyBjIDAuMTIsLTAuNDQgMTIuMiwtNDQuODcgMTIuMiwtODcuNDkgMCwtNDQuNTQgLTI3LjI3LC02MS4yIC02MS43OCwtODIuMzEgbCAtMTAuODMsLTYuNjggLTM3LjA2LC0yMi4zNCBjIC0zOS4xMywtMjIuOTcgLTU4LjY2LC0zMy4xMiAtNTguNjYsLTczLjI1IGwgMCwtMjIuOTMgYyAwLC0xMy4zMSAtNTAuMywtNDcuNDEgLTEwMy45MSwtNDcuNDEgLTQ5LjIzLDAgLTEwMy40MSwzNC4xMSAtMTA1LjM5LDQ2LjQgMC4wMiwxNi40NCAwLjcxLDIzLjU4IDAuNzEsMjMuNTggMCwzOS4zNCAtMTkuMDcsNTAuNDIgLTU3LjA1LDcyLjQ2IC0xMC41OCw2LjE1IC0yMy43NCwxMy43OCAtMzkuMjQsMjMuNDkgbCAtMTAuODIsNi42OCBjIC0zNC41MTMsMjEuMTEgLTU5LjE1NywzMy4wOCAtNTkuMTU3LDgyLjMxIDAsNTEuODQgMTIuMzQzLDcwLjM3IDEyLjM0Myw4Ni4zNyAwLDE1Ljk4IC0xNy4yNjUsNzguMzQgLTE3LjI2NSw4OC4wNiAwLDEuMjUgMC4xNDQsMTEuNzggMC4xNDQsMTEuNzggMCwyMy4zMiAyLjk3Myw0Mi43OCAzOS4wMTYsNzQuODIgMi45MjIsMi42IDcuMzU5LDEwLjUyIDMuODEyLDE0LjkxIC0zLjU1NCw0LjM4IC01LjAwMyw2LjIxIC05LjE1NiwxMS4xMiAtNC4xNDQsNC45MiAtMTUuMDU1LDMuOTIgLTE4LjI2NSwxLjA3IC00Mi42MjksLTM3Ljg4IC01MS4zNDgsLTY2LjU3IC01MS4zNDgsLTEwMS45MiAwLDAgLTAuMTQ5LC0xMC41MSAtMC4xNDksLTEyLjA4IDAsLTkuNTkgLTAuNDAyLC00Ljc1IDQuNTQsLTI0Ljk4IDEuNzU3LC03LjIyIDQuMTk1LC0xNy42IDcuNTc4LC0zMy4wMSAtMS4yNjYsLTUuMDQgLTMuNTU5LC0xOC4yOSAtNS44OTksLTM0Ljk0IC0zLjY5MSwtMjYuMjggLTcuNDc2LC02MS4wNiAtNy40NzYsLTg1LjQ5IDAsLTMzLjUzIDE1LjQ0MSwtNTcuMTkgMzUuNjQ0LC03NS41NyAyNC41OSwtMTEuNDIgNDkuOTg4LC0yMy4wOSA2OC43MTgsLTMxLjY5IGwgMjYuNjgsMCAwLC0xMi4xOSBjIDEuMzgsLTAuNjQgMi4xNywtMS4wMiAyLjI4LC0xLjA2IGwgLTIuMjgsLTUgMCwtMTIuNDUgYyAwLjc2LC0wLjQ1IDEuNTMsLTAuODggMi4yNSwtMS4zMSAzNi4yNywtMjEuMDUgMzkuMDMsLTIzLjUyIDM5LjE1LC0zOS45NSAtMC41MiwtNC40MyAtMC42OCwtMTEuNjkgLTAuNjgsLTI1LjIxIDAsLTQ0LjU1IDg2LjgsLTgyLjE0IDE0MS4zMSwtODIuMTQgNjAuNDksMCAxNDAuNTgsNDAuODkgMTQwLjU4LDgzLjM1IGwgMCwyMi45MyBjIDAsMTguMTEgMS45MiwxOS43OCAzNi44NCw0MC4zIGwgMCwzMi43MyAzNS45NiwwIDAsLTExLjExIDUuMzMsMy4yMiAxMC40OSw2LjQ2IGMgOS41Myw1LjgzIDE5LjM3LDExLjg1IDI4Ljc2LDE4LjY4IDI3LjA3LDE5Ljc0IDUwLjIyLDQ2LjI1IDUwLjIyLDk0LjMgMCwzMC4wMyAtNS4xNCw1OS45IC05LjA3LDc4LjQyIC0xLjMsNi4wOCAtMi40NywxMC45NSAtMy4yNywxNC4xNiAxLjUxLDYuNzkgOC40OSwzOC4wNyA4LjQ5LDM4LjA3IgogICAgICAgICBpZD0icGF0aDI4IgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTAxNC4xMywxMTg0LjYzIGMgMC44NCwtNy4yOSAyLjk0LC0xNS4xOSA2LjE4LC0yMy40MSA3LjMzLDMuNTEgMTQuMjQsNi44IDIwLjU5LDkuODUgLTIuMjUsMS4xNCAtMTIuMTgsNi4xOCAtMjYuNzcsMTMuNTYiCiAgICAgICAgIGlkPSJwYXRoMzAiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxNDQ1LjA1LDEyMTYuODcgMCw5Mi43MyAtMzUuOTYsMCAwLC0xMTcuODEgYyAwLC0yMy43OCAtMzIuNiwtNzQuNTcgLTkxLjUyLC0xMDQuMjEgbCAtMS45MiwtMC45NSBjIC0yOC41MiwtMTQuMzQgLTY0LjAxLC0zMC43NSAtNzguNywtMzAuNzUgLTEzLjUyLDAgLTU5LjI1LDEzLjM1IC05NS43OCwzMS43IC01OC45NCwyOS42NCAtOTEuNTMsODAuNDMgLTkxLjUzLDEwNC4yMSBsIDAsOTkuNTYgLTEyLjYzLC0yNy42OSBjIC0xLjM4LDAuNjMgLTEwLjI2LDQuNjggLTIzLjMyLDEwLjY1IGwgMCwtNDkuMTcgMTcuMTYsLTguNyAxMC40NiwtNDUuMTcgYyAwLjkzLDAuNDQgMS44OSwwLjg5IDIuOCwxLjMzIGwgMTUuNTIsLTMyLjQxIGMgLTEuNDUsLTAuNyAtOS43MSwtNC42NSAtMjIuMDMsLTEwLjU1IDYuNjEsLTkuNDcgMTQuNSwtMTguOTUgMjMuNjIsLTI4LjA5IGwgMTUuNDEsNy4yNiAzNC42NiwtMjMuNCAtMjAuMDMsLTkuNDUgYyAxMC4zNywtNy40NiAyMS42MywtMTQuMzggMzMuNzcsLTIwLjQ5IDI5LjY3LC0xNC45MSA4NS43NCwtMzYuOTggMTExLjkyLC0zNi45OCAyMy4yMiwwIDU4LjAxLDE3LjUxIDk0Ljg0LDM2LjAzIGwgMS45MiwwLjk1IGMgMTUuMjQsNy42NiAyOS4xMywxNi42MiA0MS41MywyNi4zMSAxMC42MSw4LjI4IDIwLjEyLDE3LjEzIDI4LjQ2LDI2LjIgOC4zMiw5LjA2IDE1LjQ5LDE4LjM3IDIxLjQsMjcuNTkgNy4xMSwxMS4wNyAxMi40MSwyMi4wMSAxNS43NCwzMi4zMSAwLjg0LDIuNTkgMS41Niw1LjE0IDIuMTUsNy42NSAxLjM1LDUuNzIgMi4wNiwxMS4xOCAyLjA2LDE2LjI2IGwgMCwyNS4wOCIKICAgICAgICAgaWQ9InBhdGgzMiIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDEwNDkuNjQsMTMwOS42IC0yNi42OCwwIGMgMTIuODIsLTUuODYgMjIuNSwtMTAuMjkgMjYuNjgsLTEyLjE5IGwgMCwxMi4xOSIKICAgICAgICAgaWQ9InBhdGgzNCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDEwNzYuNjMsMTEwOC44MSAtMTUuNDEsLTcuMjYgLTEzNi41MjUsLTY0LjMzIC0yNi44ODYsLTEyLjcyIGMgLTI2LjkzNCwtMTIuOTUgLTYwLjUwOCwtNDAuMDcgLTY3LjQ3NywtOTUuNzMgLTEuMTQ4LC05LjEyOSAtMjEuNzQyLC0zMy4zMjkgLTQyLjg1OSwtMzMuMzI5IC0xMi45NzcsMCAtMjguMzAxLDguNTcxIC0zMC40MTgsMjEuMzI5IC0zLjY2LDIxLjkyOSAtMjAuMjU0LDEwMC41NyAtMjAuOTY1LDEwMy45MSAtMi4wNTksOS43MSAtMTEuNTg2LDE1LjkzIC0yMS4zMDEsMTMuODggLTkuNzExLC0yLjA2IC0xNS45MjIsLTExLjYgLTEzLjg1OSwtMjEuMzIgMC4wMzksLTAuMTggMS4wNDcsLTQuOTggMi41OTMsLTEyLjQgMi40NzMsLTEuMTggNS4xMjIsLTIuNDQyIDcuOTg1LC0zLjc4MSBsIDE4LjM1MSwtOC43IC0xNS42MDUsLTMyLjM5IC0xLjYwOSwwLjc2OSBjIDMuODU5LC0xOC44NjcgNy41MTEsLTM3LjI2OSA4Ljk0OSwtNDUuODc5IDUuMzU5LC0zMi4xNDggMzcuNzAzLC01MS4zNzEgNjUuODc5LC01MS4zNzEgNDAuMTcyLDAgNzUuMzI0LDM5LjMyMSA3OC41MTksNjQuODAxIDQuMDQzLDMyLjI1IDE5LjUzOSw1NC40NDEgNDcuMzgzLDY3LjgyIGwgMjYuNTI3LDEyLjU1MSAxNTEuMzU4LDcxLjMgMjAuMDMsOS40NSAtMzQuNjYsMjMuNCIKICAgICAgICAgaWQ9InBhdGgzNiIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDcyOS44NTksOTg4LjM1OSAtMTguMzUxLDguNyBjIC0yLjg2MywxLjMzOSAtNS41MTIsMi42MDEgLTcuOTg1LDMuNzgxIC0zMS4yMzQsMTQuOTIgLTMyLjU0NiwxNy42MSAtMzIuNTQ2LDI4LjM3IDAsMTMuMjYgMzAuNjcxLDMwLjE3IDU0LjcxNCwzMC4xNyAyMC4zMjEsMCAzNS44OTEsLTUuODMgNTAuOTQyLC0xMS40NSAxMy42MjEsLTUuMDkgMjcuNjgzLC0xMC4zNiA0My41NTUsLTEwLjM2IDIyLjg1NSwwIDI5LjQxNCwyLjMyIDM5LjkxNCw3Ljk4IGwgOC44NTEsNC4zNCBjIDEzLjg1Niw1LjgzIDEyMS4zMiw1Ny4xMyAxNjguNjQ3LDc5Ljc1IDEyLjMyLDUuOSAyMC41OCw5Ljg1IDIyLjAzLDEwLjU1IGwgLTE1LjUyLDMyLjQxIGMgLTAuOTEsLTAuNDQgLTEuODcsLTAuODkgLTIuOCwtMS4zMyBsIDAuMSwtMC40NiBjIDAsMCAtMC4xOSwwLjA5IC0wLjUxLDAuMjYgLTYuMzUsLTMuMDUgLTEzLjI2LC02LjM0IC0yMC41OSwtOS44NSAtNjIuMzQ5LC0yOS44MSAtMTUzLjU2OCwtNzMuMjcgLTE2NS4zMDYsLTc4LjIxIGwgLTExLjk4MSwtNS44MyBjIC01LjIxNCwtMi44MSAtNi43OTMsLTMuNjYgLTIyLjgzNSwtMy42NiAtOS4zNjgsMCAtMTkuMzgzLDMuNzQgLTMwLjk1OCw4LjA4IC0xNi4zNjMsNi4xMiAtMzYuNzE0LDEzLjczIC02My41MzksMTMuNzMgLTM2Ljk2MSwwIC05MC42NTYsLTI1Ljc1IC05MC42NTYsLTY2LjEyIDAsLTM1Ljk0IDIzLjAzNSwtNDYuNzQ5IDYxLjE5MiwtNjQuNjc5IGwgMTYuNDE4LC03Ljc5MyAxLjYwOSwtMC43NjkgMTUuNjA1LDMyLjM5IgogICAgICAgICBpZD0icGF0aDM4IgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gNjk3LjY4LDEzODUuNTggYyAtMTEuOTYxLC01Ljg1IC0xOC42OCwtMTYuNDUgLTIxLjQ0NiwtMjMuOTkgbCAwLjE2MSwtNy4yMSBjIDAuMjI2LC05LjkyIDguNDQ5LC0xOC4xNyAxOC4zNzEsLTE3Ljk2IDkuOTIyLDAuMjEgMTcuNzk2LDguMDQgMTcuNTc4LDE3Ljk2IGwgLTAuNDM0LDIwLjI1IGMgLTAuODE2LDI1LjUzIC0xLjkyMiw2MC40OCA5LjY0NSw3Mi40MyAxLjkwMiwxLjk2IDUuMzM2LDQuNTYgMTMuMjY5LDQuNTYgMjQuMTM3LDAgNDMuNjE3LC0xNS4wMyA1Mi45ODEsLTI3Ljg5IGwgNS40MTQsLTcuNzMgYyAxNC4wODYsLTIwLjQ1IDM3LjY4NywtNTQuNjYgNjguNzUsLTcwLjY0IDI0LjEwOSwtMTIuNDEgMTA5Ljc4NSwtNTEuODMgMTUxLjcyMSwtNzEuMDUgMTMuMDYsLTUuOTcgMjEuOTQsLTEwLjAyIDIzLjMyLC0xMC42NSBsIDEyLjYzLDI3LjY5IDIuMjgsNSBjIC0wLjExLDAuMDQgLTAuOSwwLjQyIC0yLjI4LDEuMDYgLTQuMTgsMS45IC0xMy44Niw2LjMzIC0yNi42OCwxMi4xOSAtMTguNzMsOC42IC00NC4xMjgsMjAuMjcgLTY4LjcxOCwzMS42OSAtMzIuMzEyLDE1IC02My4yNDYsMjkuNTYgLTc1LjgyOCwzNi4wMiAtMjMuMDM5LDExLjg2IC00NC4yMyw0Mi41OSAtNTUuNjE3LDU5LjA5IGwgLTUuOTI2LDguNDggYyAtMTUuMDE2LDIwLjY0IC00NC40NDksNDIuNjggLTgyLjA0Nyw0Mi42OCAtMTUuOTc2LDAgLTI5LjEyNSwtNS4yMiAtMzkuMDg2LC0xNS40OSAtMTMuNzczLC0xNC4yMyAtMTguNDk2LC0zNS4xNyAtMTkuODI0LC01Ny41IDEuOTQxLDEuMTcgMy45MywyLjMgNi4wMTIsMy4zMSBsIDE1Ljc1NCwtMzIuMyIKICAgICAgICAgaWQ9InBhdGg0MCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDEwNDEuNDEsMTE3MC44MSAtMC4xLDAuNDYgLTEwLjQ2LDQ1LjE3IC0xNy4xNiw4LjcgLTE4MC40NjcsOTEuNDEgLTAuMjU0LDAuMTIgYyAtMjYuMjgxLDEyLjI5IC00NC45MzQsMTEuNDEgLTUzLjkwMywxMC45OSBsIC0yLjYwNSwtMC4xIGMgLTE1LjMxNiwwIC0zMC4zMDUsLTcuMzEgLTQ2LjE3MiwtMTUuMDUgLTEzLjc2MiwtNi43MSAtMjcuOTkyLC0xMy42NSAtMzkuMTMzLC0xMy42NSAtMTMuNTU4LDAgLTE2LjQxNCwxMS42OSAtMTYuNDE0LDIxLjUxIGwgMCwzNC42IGMgMCwxLjUzIDAuNDkyLDMuODggMS40OTIsNi42MiAyLjc2Niw3LjU0IDkuNDg1LDE4LjE0IDIxLjQ0NiwyMy45OSBsIC0xNS43NTQsMzIuMyBjIC0yLjA4MiwtMS4wMSAtNC4wNzEsLTIuMTQgLTYuMDEyLC0zLjMxIC0yNC4xNDEsLTE0LjYzIC0zNy4xMjEsLTQwLjgxIC0zNy4xMjEsLTU5LjYgbCAwLC0zNC42IGMgMCwtMzMuODIgMjEuNTM1LC01Ny40NSA1Mi4zNjMsLTU3LjQ1IDE5LjQ0MiwwIDM4LjI3LDkuMTkgNTQuODkxLDE3LjI5IDExLjUwNCw1LjYyIDIzLjM5NCwxMS40MSAzMC40MTQsMTEuNDEgbCA0LjMwOSwwLjE0IGMgNy40NDUsMC4zNiAxOC42OTksMC44NyAzNi44NTksLTcuNjEgMC42MzMsLTAuMzIgMTM2Ljk2NSwtNjkuMzcgMTk2LjUwMSwtOTkuNTIgMTQuNTksLTcuMzggMjQuNTIsLTEyLjQyIDI2Ljc3LC0xMy41NiAwLjMyLC0wLjE3IDAuNTEsLTAuMjYgMC41MSwtMC4yNiIKICAgICAgICAgaWQ9InBhdGg0MiIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDEwODAuNTIsMTM4My45NCBjIDQwLjk4LDAgNTguMSwyOS4yOCA3Ny44Myw1NS40MiAxMS40NCwxNS4xNiAxNi43NCwzMC43MiAxNi43NCwzNy44MiAwLDE4LjkxIC0yOS4yNiwyOC44MSAtNDEuNDMsMjguODEgLTEyLjE2LDAgLTEwNC45MywwIC0xMTMuOTUsMCAtOSwwIC0yNC4zMDQsLTguMSAtMjQuMzA0LC0yNy40NyAwLC0xOS4zNiAyNS4yMjQsLTk0LjU4IDg1LjExNCwtOTQuNTgiCiAgICAgICAgIGlkPSJwYXRoNDQiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxMTk4LjcxLDEyMzYuMjcgYyAyOCwwIDE4LjU3LDExLjMxIDQyLjQ3LDExLjMxIDE5LjUyLDAgMTIuOTEsLTExLjAxIDM5LjM0LC0xMS4wMSAyNC41NSwwIDMwLjUyLDE4LjU2IDMwLjUyLDI2LjEyIDAsMTEuNjQgLTEzLjE5LDE5LjEyIC0xOS4xOSwzNC45MiAtNS45OSwxNS43NCAtMTcuNjMsNzMuOTQgLTUzLjE4LDczLjk0IC0xMy4wNywwIC0yMC42MiwtNS4zMyAtMzAuNTMsLTE2Ljk4IC0xNi4wNCwtMTguODggLTE3LjMyLC01MC42MyAtMjcuMzcsLTYyLjk0IC05Ljc0LC0xMS45NSAtMTMuNTIsLTI0Ljc4IC0xMy41MiwtMzEuNDUgMCwtNy4yNCAzLjQ2LC0yMy45MSAzMS40NiwtMjMuOTEiCiAgICAgICAgIGlkPSJwYXRoNDYiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PC9nPjwvZz48L3N2Zz4=">'},
+ GHS07:{nome:"Pericolo (irritante/nocivo)", svg:'<img alt="GHS07" style="width:100%;height:100%;display:block" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+PHN2ZwogICB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iCiAgIHhtbG5zOmNjPSJodHRwOi8vY3JlYXRpdmVjb21tb25zLm9yZy9ucyMiCiAgIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyIKICAgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogICB3aWR0aD0iNzAiCiAgIGhlaWdodD0iNzAiCiAgIGlkPSJzdmc3IgogICB4bWw6c3BhY2U9InByZXNlcnZlIj48ZGVmcyBpZD0iZGVmczYiIC8+PGcKICAgICB0cmFuc2Zvcm09Im1hdHJpeCgxLjI1LDAsMCwtMS4yNSwwLDcwKSIKICAgICBpZD0iZzEwIj48ZwogICAgICAgdHJhbnNmb3JtPSJzY2FsZSgwLjAyMiwwLjAyMikiCiAgICAgICBpZD0iZzEyIj48cGF0aAogICAgICAgICBkPSJNIDIyNDYuODgsMTIyMC4xMyBDIDIxNjIuMzIsMTEzNS41OSAxMzA0LjY1LDI3Ny44OTEgMTIyMC4xLDE5My4zMzIgMTEzNS41NSwyNzcuODkxIDI3Ny44NzUsMTEzNS41OSAxOTMuMzI4LDEyMjAuMTMgYyA4NC41NDcsODQuNTYgOTQyLjIyMiw5NDIuMjUgMTAyNi43NjIsMTAyNi43OSA4NC41NSwtODQuNTQgOTQyLjIzLC05NDIuMjMgMTAyNi43OSwtMTAyNi43OSB6IE0gMCwxMjIwLjEzIDEyMjAuMSwwIDI0NDAuMiwxMjIwLjEzIDEyMjAuMDksMjQ0MC4yNSAwLDEyMjAuMTMiCiAgICAgICAgIGlkPSJwYXRoMTQiCiAgICAgICAgIHN0eWxlPSJmaWxsOiNlZjJmMzI7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxMjIyLjExLDk5MC4yMzggYyAtNzUuMDksMCAtMTM1Ljk2LC02NC4zMjggLTEzNS45NiwtMTQzLjY0OCAwLC03OS4zNTIgNjAuODcsLTE0My42NDkgMTM1Ljk2LC0xNDMuNjQ5IDc1LjA4LDAgMTM1Ljk1LDY0LjI5NyAxMzUuOTUsMTQzLjY0OSAwLDc5LjMyIC02MC44NywxNDMuNjQ4IC0xMzUuOTUsMTQzLjY0OCIKICAgICAgICAgaWQ9InBhdGgxNiIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDEwNDQuOTMsMTc0Mi4yMyBjIDAsLTEuNTMgMC4wOSwtMy4wNyAwLjE3LC00LjU4IGwgLTAuMSwwIDAuMTUsLTEuMDEgYyAwLjI4LC0zLjkzIDAuODUsLTcuOCAxLjcxLC0xMS42MiBsIDg0LjE1LC01NjcuOTkgYyAyLjk0LC00OC4zNyA0Mi41OSwtODYuNjcgOTEuMSwtODYuNjcgNDguMjMsMCA4Ny42OSwzNy44NyA5MSw4NS44NiBsIDg0LjAxLDU2Ny44OSBjIDEuMDQsNC4zMiAxLjY5LDguNzQgMS45NiwxMy4xOSBsIDAuMDQsMC4zNSAtMC4wNCwwIGMgMC4xLDEuNTEgMC4xOSwzLjA1IDAuMTksNC41OCAwLDY0LjQxIC03OS4zMiwxMTYuNjEgLTE3Ny4xNiwxMTYuNjEgLTk3Ljg2LDAgLTE3Ny4xOCwtNTIuMTkgLTE3Ny4xOCwtMTE2LjYxIgogICAgICAgICBpZD0icGF0aDE4IgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjwvZz48L2c+PC9zdmc+">'},
+ GHS08:{nome:"Pericolo per la salute", svg:'<img alt="GHS08" style="width:100%;height:100%;display:block" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+PHN2ZwogICB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iCiAgIHhtbG5zOmNjPSJodHRwOi8vY3JlYXRpdmVjb21tb25zLm9yZy9ucyMiCiAgIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyIKICAgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogICB3aWR0aD0iNzAiCiAgIGhlaWdodD0iNzAiCiAgIGlkPSJzdmc4IgogICB4bWw6c3BhY2U9InByZXNlcnZlIj48ZGVmcyBpZD0iZGVmczYiIC8+PGcKICAgICB0cmFuc2Zvcm09Im1hdHJpeCgxLjI1LDAsMCwtMS4yNSwwLDcwKSIKICAgICBpZD0iZzEwIj48ZwogICAgICAgdHJhbnNmb3JtPSJzY2FsZSgwLjAyMiwwLjAyMikiCiAgICAgICBpZD0iZzEyIj48cGF0aAogICAgICAgICBkPSJNIDIyNDYuODgsMTIyMC4xMyBDIDIxNjIuMzIsMTEzNS41OSAxMzA0LjY1LDI3Ny44OTEgMTIyMC4xLDE5My4zMzIgMTEzNS41NSwyNzcuODkxIDI3Ny44NzUsMTEzNS41OSAxOTMuMzI4LDEyMjAuMTMgYyA4NC41NDcsODQuNTYgOTQyLjIyMiw5NDIuMjUgMTAyNi43NjIsMTAyNi43OSA4NC41NSwtODQuNTQgOTQyLjIzLC05NDIuMjMgMTAyNi43OSwtMTAyNi43OSB6IE0gMCwxMjIwLjEzIDEyMjAuMSwwIDI0NDAuMiwxMjIwLjEzIDEyMjAuMDksMjQ0MC4yNSAwLDEyMjAuMTMiCiAgICAgICAgIGlkPSJwYXRoMTQiCiAgICAgICAgIHN0eWxlPSJmaWxsOiNlZjJmMzI7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxMDkzLjc0LDEwOTQuMzIgYyAtOS44MywwIC0xNy44MSwtNy45NyAtMTcuODEsLTE3LjggMCwtOS44NSA3Ljk4LC0xNy44MiAxNy44MSwtMTcuODIgOS44NCwwIDE3LjgyLDcuOTcgMTcuODIsMTcuODIgMCw5LjgzIC03Ljk4LDE3LjggLTE3LjgyLDE3LjgiCiAgICAgICAgIGlkPSJwYXRoMTYiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxMzYzLjY3LDkyMy4zNTkgYyAwLDEwLjI1IC04LjMxLDE4LjU4MiAtMTguNTksMTguNTgyIC0xMC4yOCwwIC0xOC41OSwtOC4zMzIgLTE4LjU5LC0xOC41ODIgMCwtMi4zNzEgMC40NywtNC41NzggMS4yNCwtNi42NjggLTYuNzIsLTAuOTQxIC0xMS45MywtNi42NzkgLTExLjkzLC0xMy42OTEgMCwtMS45NDkgMC40MywtMy44MDEgMS4xNSwtNS41IDEuOTYsLTQuOTE4IDYuNzEsLTguMzk4IDEyLjMxLC04LjM5OCBsIDAuMzYsMC4wMzkgMC4wMywwIGMgNy42OCwwIDEzLjg5LDYuMjE4IDEzLjg5LDEzLjg1OSAwLDAuNjI5IC0wLjA5LDEuMjMgLTAuMTgsMS44NCAwLjU4LC0wLjA1OSAxLjE0LC0wLjA5IDEuNzIsLTAuMDkgMTAuMjgsMCAxOC41OSw4LjM0IDE4LjU5LDE4LjYwOSIKICAgICAgICAgaWQ9InBhdGgxOCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDExODIuMDgsOTAxLjE0OCBjIDAsLTkuNTg5IDcuNzYsLTE3LjM1OSAxNy4zMywtMTcuMzU5IDkuNiwwIDE3LjM1LDcuNzcgMTcuMzUsMTcuMzU5IDAsOS41NjMgLTcuNzUsMTcuMzIxIC0xNy4zNSwxNy4zMjEgLTkuNTcsMCAtMTcuMzMsLTcuNzU4IC0xNy4zMywtMTcuMzIxIgogICAgICAgICBpZD0icGF0aDIwIgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTEyNi4zMyw5OTEuNTU5IGMgOS41OCwwIDE3LjM0LDcuNzUgMTcuMzQsMTcuMzUxIDAsOS41NiAtNy43NiwxNy4zNSAtMTcuMzQsMTcuMzUgLTQuNzcsMCAtOS4xLC0xLjk2IC0xMi4yNCwtNS4wOCAtMS4zMiw1LjQ5IC02LjIyLDkuNTcgLTEyLjEyLDkuNTcgLTYuOSwwIC0xMi40OCwtNS41OCAtMTIuNDgsLTEyLjQ2IDAsLTYuOTEgNS41OCwtMTIuNTEgMTIuNDgsLTEyLjUxIDIuNjQsMCA1LjA5LDAuODQgNy4xMSwyLjI0IDAuNDcsLTkuMTY4IDcuOTgsLTE2LjQ2MSAxNy4yNSwtMTYuNDYxIgogICAgICAgICBpZD0icGF0aDIyIgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTMxNy4zOCwxMDU0LjczIGMgLTMuMDUsMCAtNS45MiwtMC43MyAtOC40NiwtMi4wMiAtMS43Miw1Ljc0IC03LDkuOTUgLTEzLjMsOS45NSAtNy43MSwwIC0xMy45NCwtNi4yNSAtMTMuOTQsLTEzLjkzIDAsLTcuNyA2LjIzLC0xMy45NSAxMy45NCwtMTMuOTUgMS4xMSwwIDIuMTcsMC4xNiAzLjIyLDAuNCAwLjUsLTkuOCA4LjYxLC0xNy42MiAxOC41NCwtMTcuNjIgMS4zNSwwIDIuNjgsMC4xNCAzLjk2LDAuNDMgOC42NCwwLjk5IDE1LjM2LDguMjUgMTUuMzYsMTcuMTUgMCwzLjE1IC0wLjg5LDYuMDkgLTIuMzksOC42MyAtMi44OSw2LjQ3IC05LjM4LDEwLjk2IC0xNi45MywxMC45NiIKICAgICAgICAgaWQ9InBhdGgyNCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDEyNTAuNSwxMTY1LjM5IGMgMCw5LjU4IC03Ljc2LDE3LjM0IC0xNy4zNSwxNy4zNCAtOS41OSwwIC0xNy4zNCwtNy43NiAtMTcuMzQsLTE3LjM0IDAsLTYuNjMgMy43NiwtMTIuMyA5LjIyLC0xNS4yNCAtNS4yMiwtMS41IC05LjA1LC02LjI0IC05LjA1LC0xMS45MyAwLC02LjkxIDUuNjEsLTEyLjQ5IDEyLjUxLC0xMi40OSA2Ljg5LDAgMTIuNDgsNS41OCAxMi40OCwxMi40OSAwLDQuMTcgLTIuMDUsNy44MiAtNS4yLDEwLjEgOC4zMywxLjI3IDE0LjczLDguMzkgMTQuNzMsMTcuMDciCiAgICAgICAgIGlkPSJwYXRoMjYiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxMDk4LjIzLDkxNS45NDEgYyAtNy42OCwwIC0xMy44OCwtNi4xOTEgLTEzLjg4LC0xMy44NjMgMCwtNy42NjggNi4yLC0xMy44NzkgMTMuODgsLTEzLjg3OSA3LjY2LDAgMTMuODYsNi4yMTEgMTMuODYsMTMuODc5IDAsNy42NzIgLTYuMiwxMy44NjMgLTEzLjg2LDEzLjg2MyIKICAgICAgICAgaWQ9InBhdGgyOCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDExOTYuMzEsMTA5NS4xMiBjIDAsLTYuOSA1LjU5LC0xMi41IDEyLjQ3LC0xMi41IDYuOTEsMCAxMi41MSw1LjYgMTIuNTEsMTIuNSAwLDYuODggLTUuNiwxMi40OCAtMTIuNTEsMTIuNDggLTYuODgsMCAtMTIuNDcsLTUuNiAtMTIuNDcsLTEyLjQ4IgogICAgICAgICBpZD0icGF0aDMwIgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTI1My43MSw3NTguNzMgYyAwLDcuODAxIC00LjY2LDE0LjUgLTExLjM1LDE3LjU0IDEuMTcsMi4wMTkgMS44Nyw0LjMyIDEuODcsNi43ODkgMCw3LjY3OSAtNi4yMSwxMy44ODIgLTEzLjg3LDEzLjg4MiAtNy42NiwwIC0xMy44OSwtNi4yMDMgLTEzLjg5LC0xMy44ODIgMCwtNC4xMjkgMS44NiwtNy44MDkgNC43MywtMTAuMzYgLTMuNzIsLTMuNDg4IC02LjA0LC04LjQ2OSAtNi4wNCwtMTMuOTY5IDAsLTEwLjY0OCA4LjYyLC0xOS4yODEgMTkuMjgsLTE5LjI4MSAxMC42NCwwIDE5LjI3LDguNjMzIDE5LjI3LDE5LjI4MSIKICAgICAgICAgaWQ9InBhdGgzMiIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDEyMDcuNjgsNjEzLjE3MiBjIDQuNjEsMy41MDggNy42MSw5LjAzOSA3LjYxLDE1LjI5NyAwLDYuNTQzIC0zLjI2LDEyLjMwMSAtOC4yMywxNS43NjkgMi43OSwzLjM0NCA0LjQ3LDcuNjQxIDQuNDcsMTIuMzUyIDAsMTAuNjI5IC04LjYyLDE5LjI4MSAtMTkuMjcsMTkuMjgxIC0xLjYyLDAgLTMuMTYsLTAuMjMgLTQuNjQsLTAuNjAxIDIuMTUsNC40NiAzLjQsOS40NiAzLjQsMTQuNzUgMCw0Ljk2OCAtMS4wOSw5LjY0IC0yLjk5LDEzLjkwMiAxMCwwLjcxOSAxNy44Nyw5LjAxOSAxNy44NywxOS4xODcgMCw4LjMwMSAtNS4yNCwxNS4zNTIgLTEyLjU4LDE4LjA2MyA3LjE4LDYuMjM4IDExLjc2LDE1LjQxOCAxMS43NiwyNS42OCAwLDExLjc1IC01Ljk3LDIyLjEwOSAtMTUuMDIsMjguMTk5IDUuMjQsNiA4LjQ2LDEzLjgyOCA4LjQ2LDIyLjQxIDAsNy41MjcgLTIuNDgsMTQuNDQ5IC02LjYyLDIwLjA1OSA1LjM3LDEuOTIxIDkuMjEsNyA5LjIxLDEzLjAxMSAwLDcuNjg4IC02LjIsMTMuODc5IC0xMy44NiwxMy44NzkgLTQuNjksMCAtOC44MiwtMi4zMiAtMTEuMzMsLTUuODk4IC02LjIyLDcuNjk5IC0xNS43MSwxMi42MDkgLTI2LjM4LDEyLjYwOSAtNC45OCwwIC05LjcsLTEuMDkgLTEzLjk2LC0zLjAzOSAtMy4yNSw2LjA2NiAtOS42NCwxMC4xOTkgLTE2Ljk4LDEwLjE5OSAtMTAuNjYsMCAtMTkuMjgsLTguNjIxIC0xOS4yOCwtMTkuMjgxIDAsLTkuNjY4IDcuMTMsLTE3LjY0OCAxNi40MiwtMTkuMDMxIC0wLjA2LC0wLjczMSAtMC4xNCwtMS40MzggLTAuMTQsLTIuMTY4IC01LjksNC44NzEgLTEzLjQ0LDcuODIgLTIxLjY4LDcuODIgLTEyLjM5LDAgLTIzLjE4LC02LjY0MSAtMjkuMTIsLTE2LjUxOSAtNS4wMyw1LjUxOSAtMTIuMjksOS4wNDYgLTIwLjM3LDkuMDQ2IC0xMi44NSwwIC0yMy42MSwtOC44MjggLTI2LjY1LC0yMC43MzggLTQuNDEsMy4wMzEgLTkuNzYsNC44MDkgLTE1LjUxLDQuODA5IC0xNS4yMDQsMCAtMjcuNTI4LC0xMi4zMjEgLTI3LjUyOCwtMjcuNTI4IDAsLTIuMTQgMC4yNjIsLTQuMjAzIDAuNzIzLC02LjE5MSAtNy4zMDUsNi42NDggLTE2Ljk4MSwxMC43MyAtMjcuNjM3LDEwLjczIC0xNi45NjEsMCAtMzEuNTEyLC0xMC4yNjkgLTM3LjgwNSwtMjQuOTI5IC00LjQxNCwzLjAyNyAtOS43NTMsNC44MiAtMTUuNTExLDQuODIgLTE1LjIwMywwIC0yNy41MzUsLTEyLjM0IC0yNy41MzUsLTI3LjU0MyAwLC0yLjIxOSAwLjI1NywtNC4zNjcgMC43NTcsLTYuNDQ5IEwgMTIwMS41Niw0MDYgYyA0LjM2LDEuODQgNy40Miw2LjEyOSA3LjQyLDExLjE2IDAsNC43NyAtMi43Niw4Ljg2IC02Ljc1LDEwLjgyOCA0LjcyLDEuNjcyIDguMTMsNi4xMzMgOC4xMywxMS40MzQgMCw1IC0zLjAyLDkuMjg5IC03LjM0LDExLjExNyA0LjI3LDIuODQgNy4wOCw3LjY3MiA3LjA4LDEzLjE2IDAsNy41MTIgLTUuMjQsMTMuNzYyIC0xMi4yNSwxNS4zNzEgMTMuOTgsOS42MjkgMjMuMTQsMjUuNzM5IDIzLjE0LDQ0LjAxMiAwLDExLjI3NyAtMy41LDIxLjcyNyAtOS40NiwzMC4zNTkgOS42Myw1Ljk4OSAxNi4wNCwxNi42MjkgMTYuMDQsMjguODA5IDAsMTMuNzUgLTguMTYsMjUuNTU5IC0xOS44OSwzMC45MjIiCiAgICAgICAgIGlkPSJwYXRoMzQiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxNTgyLjU4LDc2NC45OCBjIC0zLjMxLDAgLTYuNDIsLTAuODM5IC05LjE2LC0yLjMyIC0zLjMzLDExLjQ0OSAtMTMuODksMTkuODI4IC0yNi40LDE5LjgyOCAtNS40MSwwIC0xMC40MywtMS41OSAtMTQuNjgsLTQuMjY5IDAuMDQsMC43MTEgMC4wOSwxLjQwMiAwLjA5LDIuMTMzIDAsMTguNzY5IC0xNS4yLDMzLjk2OCAtMzMuOTcsMzMuOTY4IC00LjM5LDAgLTguNTksLTAuODUxIC0xMi40NCwtMi4zNzkgLTAuNDksMTAuMjA3IC04Ljg5LDE4LjM0IC0xOS4yMiwxOC4zNCAtMTAuNjQsMCAtMTkuMjcsLTguNjIxIC0xOS4yNywtMTkuMjYxIDAsLTAuODI5IDAuMDYsLTEuNjYxIDAuMTgsLTIuNDYxIC00Ljg1LDcuODgyIC0xMy41MiwxMy4xNTIgLTIzLjQ3LDEzLjE1MiAtMS41NiwwIC0zLjExLC0wLjE1MiAtNC42MSwtMC40MjIgLTAuMjIsMTguNjAyIC0xNS4zMywzMy42MDIgLTMzLjk3LDMzLjYwMiAtMS44OSwwIC0zLjc2LC0wLjIxMSAtNS41NiwtMC41IC0wLjkyLDkuNzg5IC05LjE1LDE3LjQ0OSAtMTkuMTgsMTcuNDQ5IC04LjI5LDAgLTE1LjM0LC01LjI1IC0xOC4wNywtMTIuNjIxIC0wLjg1LDAuMDUxIC0xLjcyLDAuMTMzIC0yLjU5LDAuMTMzIC0zLjg2LDAgLTcuNiwtMC41ODIgLTExLjE1LC0xLjU4MiAtMy4zMSw4LjczIC0xMS43NCwxNC45NiAtMjEuNjIsMTQuOTYgLTEyLjc4LDAgLTIzLjExLC0xMC4zNzEgLTIzLjExLC0yMy4xMDkgMCwtMy45NjEgMC45NywtNy42NiAyLjcsLTEwLjkwMiAtMy4zMiwyLjc2MSAtNy41Nyw0LjQyOSAtMTIuMjUsNC40MjkgLTEwLjYzLDAgLTE5LjI3LC04LjYzNiAtMTkuMjcsLTE5LjI2OSAwLC05LjE4IDYuMzksLTE2LjgyIDE0Ljk2LC0xOC43NyAtMi41MSwtNC43MzggLTMuOTYsLTEwLjEyMSAtMy45NiwtMTUuODcxIDAsLTExLjAxOSA1LjI5LC0yMC43ODkgMTMuNDMsLTI2Ljk4OCAtMy4xMiwtNS44MDEgLTQuODgsLTEyLjQyMiAtNC44OCwtMTkuNDQxIDAsLTEwLjkxOCA0LjI2LC0yMC43NzggMTEuMTksLTI4LjE0OSAtMi4yNywtNS4xMDEgLTMuNTUsLTEwLjczIC0zLjU1LC0xNi42OCAwLC0yLjI4OSAwLjIzLC00LjUzMSAwLjYsLTYuNzE4IC0yLjc5LDEuOTI5IC02LjEsMy4xNjggLTkuNjksMy40MSAyLjM3LDMuMjA3IDMuNzgsNy4xMzcgMy43OCwxMS40MTggMCwxMC42NCAtOC42NCwxOS4yODEgLTE5LjI4LDE5LjI4MSAtMTAuNjQsMCAtMTkuMjYsLTguNjQxIC0xOS4yNiwtMTkuMjgxIDAsLTUuMTEgMS45OSwtOS43NSA1LjIyLC0xMy4xOCAtOC4wNiwtMi4zMiAtMTMuOTcsLTkuNzE5IC0xMy45NywtMTguNTE5IDAsLTEwLjY0MSA4LjYzLC0xOS4yNyAxOS4yOCwtMTkuMjcgMC42LDAgMS4xOSwwLjA5OCAxLjc4LDAuMTQ5IC0zLjU1LC02LjA3MSAtNS42MiwtMTMuMTQxIC01LjYyLC0yMC42OCAwLC0xNC4zNCA3LjMzLC0yNi45MyAxOC40NywtMzQuMzAxIC0xNC43MiwtNi4yNTggLTI1LjAzLC0yMC44NDggLTI1LjAzLC0zNy44NTkgMCwtMTIuMzIxIDUuNDMsLTIzLjM1MiAxNC4wMywtMzAuODc5IC04LjksLTYuMTIxIC0xNC43NSwtMTYuMzkxIC0xNC43NSwtMjguMDEyIDAsLTQuNzE5IDAuOTgsLTkuMjU4IDIuNzMsLTEzLjM0IC0yLjQ4LC00LjE0IC0zLjkyLC04LjkzNyAtMy45MiwtMTQuMTA5IDAsLTUuOTg4IDEuOTIsLTExLjQ4OCA1LjE2LC0xNiAtMi44MiwtMi4yMTEgLTQuNjMsLTUuNjEgLTQuNjMsLTkuNDQ5IDAsLTQuMTggMi4xMSwtNy44MjEgNS4yOSwtMTAuMDEyIC0zLjMyLC0yLjE4IC01LjUxLC01Ljg5OSAtNS41MSwtMTAuMTY4IDAsLTAuNzYyIDAuMDgsLTEuNTEyIDAuMjIsLTIuMjUgLTIuNzgsLTIuMjMxIC00LjU4LC01LjYwMiAtNC41OCwtOS40MyAwLC01LjAxOSAzLjA0LC05LjM1MSA3LjQxLC0xMS4xOTEgbCAzNjAuMjUsMzMxLjY0OCBjIDAuNzMsMi4wNDMgMS4xMyw0LjIwMyAxLjEzLDYuNDYxIDAsMTAuNjYgLTguNjUsMTkuMjgxIC0xOS4yOCwxOS4yODEiCiAgICAgICAgIGlkPSJwYXRoMzYiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxNTU0LjUxLDExMzcuNTUgMC4wMiwtMC4xNiBjIC0zLjQzLDAuODQgLTcsMS4zMyAtMTAuNzIsMS4zMyAtMjQuNzYsMCAtNDQuODUsLTIwLjA4IC00NC44NSwtNDQuODYgMCwtMi4zMiAwLjIzLC00LjYgMC41NywtNi44MiAtMi42NCwxLjE1IC01LjU3LDEuOCAtOC42MywxLjggLTcuMDgsMCAtMTMuMzQsLTMuNDEgLTE3LjI3LC04LjY5IC00LjA2LDEuMzUgLTguNCwyLjA5IC0xMi45MSwyLjA5IC0yMi4xLDAgLTQwLjA5LC0xNy40NSAtNDEuMDIsLTM5LjM0IC0xLjQyLDAuMjcgLTIuODYsMC40NSAtNC4zNiwwLjQ1IC0xMS45LDAgLTIxLjU1LC05LjY1IC0yMS41NSwtMjEuNTggMCwtMy42IDAuOSwtNyAyLjQ2LC0xMC4wMSAtMy40MywxLjk0IC03LjM2LDMuMDUgLTExLjU4LDMuMDUgLTEzLjEsMCAtMjMuNywtMTAuNiAtMjMuNywtMjMuNzAxIDAsLTYuODM5IDIuODksLTEyLjk4IDcuNTMsLTE3LjI4OSBsIDAuMDMsLTAuMjUgYyAtNS41MSwtMC41MTkgLTEwLjA2LC00LjIxMSAtMTEuODIsLTkuMjYxIC0wLjcsLTEuNTQ3IC0xLjA5LC0zLjI1OCAtMS4wOSwtNS4wNzkgMCwtNC4zNzEgMi4yNywtOC4yMTggNS43LC0xMC40NDkgMi4zNSwtMS44NCA1LjI5LC0yLjk2MSA4LjUsLTIuOTYxIDUuOTYsMCAxMSwzLjczOSAxMyw5LjAwOCAzLjI1LC0xLjc1OCA2Ljk2LC0yLjc3NyAxMC44NywtMi43NzcgMS43OCwwIDMuNTEsMC4yMTEgNS4xNywwLjYwOSAtMC4xNCwtMS40MyAtMC4yMywtMi44NzEgLTAuMjMsLTQuMzQgMCwtNS40MjIgMS4wNywtMTAuNjAxIDIuOTcsLTE1LjM1MSAtNy42NCwtMS43NzggLTEzLjM3LC04LjYzNyAtMTMuMzcsLTE2LjgyMSAwLC0yLjU0NiAwLjU5LC00LjkyOSAxLjU2LC03LjA4OSAyLjQ1LC02LjI1OCA4LjUzLC0xMC43MDcgMTUuNjgsLTEwLjcwNyA1LjksMCAxMS4wNiwzLjA1OCAxNC4wOSw3LjY2IDEuMSwxLjU3IDEuOTksMy4zMDggMi41Nyw1LjE4NyA1LjM1LC0yLjU1MSAxMS4zMSwtNCAxNy42MiwtNCAxLjk0LDAgMy44NCwwLjE5MiA1Ljc0LDAuNDQyIC0xLjEyLC0zIC0xLjc2LC02LjIxOSAtMS43NiwtOS42MDIgMCwtNC40NjEgMS4xMSwtOC42MjkgMi45OCwtMTIuMzQ4IC0wLjg4LDAuMTY4IC0xLjc5LDAuMjcgLTIuNzEsMC4yNyAtNy42NywwIC0xMy44NywtNi4yMzEgLTEzLjg3LC0xMy44NzEgMCwtNy42NiA2LjIsLTEzLjg3MSAxMy44NywtMTMuODcxIDYuOTIsMCAxMi42LDUuMDcgMTMuNjQsMTEuNjkxIDMuNzUsLTE0LjcxOSAxNy4wNCwtMjUuNjAxIDMyLjkxLC0yNS42MDEgNy4xNCwwIDEzLjc0LDIuMjExIDE5LjE5LDUuOTUzIDEuNjQsLTEzLjY0MSAxMy4yMywtMjQuMjMxIDI3LjMxLC0yNC4yMzEgNy4xNywwIDEzLjY4LDIuNzcgMTguNTgsNy4yNTggLTAuMDUsLTAuODA5IC0wLjEzLC0xLjY0OCAtMC4xMywtMi40NjkgMCwtMTguNzg5IDE1LjIyLC0zMy45ODggMzMuOTksLTMzLjk4OCA2LjQzLDAgMTIuNDIsMS43OTcgMTcuNTUsNC44ODcgLTIuNTYsLTMuNDg5IC00LjExLC03LjgwOSAtNC4xMSwtMTIuNDg5IDAsLTExLjY5OSA5LjQ5LC0yMS4xOTEgMjEuMTksLTIxLjE5MSA3LjA5LDAgMTMuMzUsMy40NzMgMTcuMiw4LjgxMyBsIDAuMDEsMCAxODQuMDMsMTY5LjM5OCAwLDEyNC4wNyBjIDAsMzcuNjEgLTQwLjUyLDg0LjYzIC04OS40NywxMDEuMzkgLTEwLjk5LDMuNzcgLTgzLjU0LDI3LjQ0IC04My41NCwyNy40NCAtOC4zNSwtMC42NCAtMTUuMTQsLTYuODIgLTE2Ljc2LC0xNC44NSAtMi41NiwxLjMxIC01LjQzLDIuMDYgLTguNSwyLjA2IC0xMC4yNiwwIC0xOC42LC04LjMzIC0xOC42LC0xOC42IDAsLTEuMDEgMC4xMSwtMiAwLjI3LC0yLjk2IC01LjY1LDQuMjIgLTEyLjY0LDYuNzQgLTIwLjI0LDYuNzQgLTE4Ljc3LDAgLTM0LjAxLC0xNS4yMSAtMzQuMDEsLTMzLjk5IgogICAgICAgICBpZD0icGF0aDM4IgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTE3MS4xMywxMTY2LjY2IC0wLjA3LC0wLjc1IC0wLjg2LDAuNDcgYyAwLjMyLDAuMDggMC42MiwwLjIgMC45MywwLjI4IHogbSAtMjA2Ljc1OSw1NTEuNiBjIDAsLTEwMS40NSAzNy45MTksLTI0My43NyAxMTEuODU5LC0zMzEuMDQgbCAtOS4wMiwtOTIuNTMgLTE5OC4zNTUsLTcxLjc3IGMgMy4xNzYsLTE1LjQ4IDE2Ljg3NSwtMjcuMTMgMzMuMjk3LC0yNy4xMyAyLjkwMywwIDUuNjg0LDAuNCA4LjM3NSwxLjA4IDMuNzg5LC0xNC42MiAxNy4wMzUsLTI1LjQ1IDMyLjg1NiwtMjUuNDUgMS42NzYsMCAzLjMwNSwwLjE3IDQuOTE0LDAuMzkgMy44ODcsLTE0LjQ4IDE3LjA3NCwtMjUuMTUgMzIuNzgxLC0yNS4xNSA0LjYzNywwIDkuMDI3LDAuOTQgMTMuMDQ3LDIuNjEgMS4wODYsLTEwLjkxIDEwLjI1NSwtMTkuNDEgMjEuNDU1LC0xOS40MSAyLjIsMCA0LjMzLDAuMzQgNi4zMywwLjkzIDIuNzYsLTE1Ljk5IDE2LjY3LC0yOC4xOCAzMy40NiwtMjguMTggMTMuMDUsMCAyNC4zOSw3LjQgMzAuMDcsMTguMTkgNS43MSwtNC4zNCAxMi44LC02LjkzIDIwLjUzLC02LjkzIDUsMCA5LjczLDEuMDkgMTQuMDEsMy4wMyA0LjQzLC05LjM3IDEyLjY0LC0xNi42MSAyMi42NiwtMTkuNzQgLTAuNCwtMS4yNSAtMC42NywtMi41NCAtMC42NywtMy45MyAwLC02Ljg5IDUuNTgsLTEyLjQ4IDEyLjQ4LC0xMi40OCA2Ljg5LDAgMTIuNDgsNS41OSAxMi40OCwxMi40OCAwLDEuNTUgLTAuMzEsMyAtMC44Myw0LjM3IDE0LjU4LDUuMSAyNS4wNCwxOC45MyAyNS4wNCwzNS4yNSAwLDcuNDYgLTIuMiwxNC40IC01Ljk2LDIwLjIzIDYuMDgsMC44MSAxMC44LDUuOTggMTAuOCwxMi4zMSAwLDUuNCAtMy40Myw5Ljk1IC04LjIxLDExLjY5IDUuMjIsNS45NyA4LjQsMTMuNzYgOC40LDIyLjMgMCwxLjY0IC0wLjE1LDMuMjIgLTAuMzcsNC44MSAxMi44MSw0Ljg1IDIxLjkzLDE3LjIyIDIxLjkzLDMxLjczIDAsOS4xIC0zLjYyLDE3LjI5IC05LjQxLDIzLjM3IDEuMDYsLTAuMjkgMi4xMywtMC41IDMuMjksLTAuNSA2Ljg4LDAgMTIuNDksNS41OSAxMi40OSwxMi41IDAsNi44OSAtNS42MSwxMi40OCAtMTIuNDksMTIuNDggLTIuNzQsMCAtNS4yNiwtMC45MSAtNy4zMiwtMi40IC0yLjQ5LDQuNjIgLTcsNy45OCAtMTIuMzcsOC44OCA0LjIyLDYuODcgNi42OCwxNC45MiA2LjY4LDIzLjU2IDAsNS42MSAtMS4wNiwxMC45NSAtMi45MywxNS45IDEyLjg4LDQuODQgMjIuMDYsMTcuMjIgMjIuMDYsMzEuNzkgMCw4LjQ3IC0zLjEzLDE2LjIxIC04LjI2LDIyLjE3IDkuNDQsMy4xIDE2LjI0LDEyIDE2LjI0LDIyLjQ4IDAsOC42MSAtNC42MSwxNi4xNCAtMTEuNDYsMjAuMjkgMy4yMSw0LjA0IDUuMTQsOS4xNSA1LjE0LDE0LjcxIDAsMS40MiAtMC4xNiwyLjggLTAuMzksNC4xNyA0LjkyLDAuMjIgOS40NSwxLjg5IDEzLjE0LDQuNjggLTAuMjcsLTEuNDYgLTAuNDMsLTIuOTUgLTAuNDMsLTQuNDggMCwtOC40MiA0LjQsLTE1LjggMTAuOTksLTIwIC0xLjMsLTMuNiAtMi4wNSwtNy40OCAtMi4wNSwtMTEuNTUgMCwtMTMuODMgOC4yOSwtMjUuNyAyMC4xMywtMzEuMDEgLTEuMDgsLTMuODkgLTEuNzEsLTcuOTYgLTEuNzEsLTEyLjE5IDAsLTE0LjM5IDYuNzksLTI3LjE0IDE3LjI4LC0zNS4zNiAtOS4xOSwtNC4wMiAtMTUuNjMsLTEzLjIgLTE1LjYzLC0yMy45IDAsLTEwLjY3IDYuNDEsLTE5LjgzIDE1LjU5LC0yMy44NyAtMS44MywtMy4xOCAtMi45MSwtNi44NiAtMi45MSwtMTAuOCAwLC04LjYzIDUuMDcsLTE2LjA0IDEyLjQsLTE5LjUgLTIuMTMsLTUuMTkgLTMuMywtMTAuODcgLTMuMywtMTYuODIgMCwtNy4xOCAxLjcxLC0xMy45NiA0Ljc0LC0xOS45NyAtMS40NCwtMS42MyAtMi43OCwtMy4zNCAtMy45OCwtNS4xNiAtMi4yNiwyLjMgLTUuMzksMy43MyAtOC44OCwzLjczIC02Ljg4LDAgLTEyLjQ4LC01LjYxIC0xMi40OCwtMTIuNSAwLC02Ljg5IDUuNiwtMTIuNDkgMTIuNDgsLTEyLjQ5IDAuNjEsMCAxLjE2LDAuMSAxLjcyLDAuMTkgLTAuMDcsLTEuMTYgLTAuMTYsLTIuMyAtMC4xNiwtMy40NiAwLC04LjY3IDIuNDksLTE2LjcyIDYuNzIsLTIzLjU3IC0zLjYyLC02Ljg5IC01LjY5LC0xNC43NCAtNS42OSwtMjMuMDggMCwtMTIuNzcgNC44NSwtMjQuMzcgMTIuNzcsLTMzLjE3IC0yLjIxLC0zLjU0IC0zLjUxLC03LjcgLTMuNTEsLTEyLjE4IDAsLTEyLjc3IDEwLjM1LC0yMy4xMiAyMy4xNCwtMjMuMTIgMTEuMzUsMCAyMC44LDguMjIgMjIuNzMsMTkuMDIgNi4yNSwwLjY2IDEyLjE1LDIuNTEgMTcuNDcsNS4yOCAyLjc3LC01Ljk0IDguNzMsLTEwLjA3IDE1LjcxLC0xMC4wNyA5LjU4LDAgMTcuMzUsNy43NSAxNy4zNSwxNy4zNCAwLDcuMjUgLTQuNDgsMTMuNDMgLTEwLjc4LDE2LjAyIDEuNzUsMy43OSAyLjk4LDcuODUgMy43NywxMi4wNiAzLjc1LC0xLjAxIDcuNjYsLTEuNTkgMTEuNzEsLTEuNTkgMC41MSwwIDEuMDIsMC4wNSAxLjU0LDAuMDcgMy4wNSwtNy44MiAxMC42MiwtMTMuMzUgMTkuNTMsLTEzLjM1IDYuODUsMCAxMi45LDMuMjkgMTYuNzUsOC4zOCAyLjE0LC03LjkgOS4zNCwtMTMuNjkgMTcuOTIsLTEzLjY5IDYuNDgsMCAxMi4yLDMuMzQgMTUuNTIsOC4zNyAzLjYsLTIuMjEgNy44MiwtMy41MyAxMi4zNywtMy41MyAxMy4wOCwwIDIzLjcsMTAuNjMgMjMuNywyMy43MSAwLDQuMzkgLTEuMjEsOC40NyAtMy4yNywxMS45OSAxLjgsLTAuNiAzLjcyLC0wLjkgNS43MSwtMC45IDEwLjI3LDAgMTguNiw4LjMxIDE4LjYsMTguNTcgMCwwLjg4IC0wLjA4LDEuNzQgLTAuMTksMi41NyAzLjkxLC03LjYyIDExLjg4LC0xMi44MiAyMS4wMywtMTIuODIgMTIuOTMsMCAyMy40MywxMC4zNSAyMy42OCwyMy4yMiA2LjIsMy44MyAxMC40OCwxMC4zOSAxMS4xOSwxOC4wMiAxLjE4LC0wLjM5IDIuNDUsLTAuNjUgMy43OCwtMC42NSA2LjksMCAxMi40OSw1LjYgMTIuNDksMTIuNSAwLDEuNDMgLTAuMjYsMi44MSAtMC43LDQuMSBsIC0xOC45NSw2LjExIC0xOTguMDQsNjMuNzggLTAuNzksODQuNTYgYyAzMC4wOCwzMi4zOCA1My41MSw3NC4xMyA3MC41MiwxMTkuNCAzMi4yLDg1Ljg0IDQ5LjU3LDE3Ni41NCA0OS41NywyMjQuMDUgMCwxMjMuMDQgLTExNy41MiwyODIuNiAtMjYyLjQ2LDI4Mi42IC0xNDQuOTUsMCAtMjYyLjQ1OSwtMTI2LjUzIC0yNjIuNDU5LC0yODIuNiIKICAgICAgICAgaWQ9InBhdGg0MCIKICAgICAgICAgc3R5bGU9ImZpbGw6IzEwMGYwZDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIgLz48cGF0aAogICAgICAgICBkPSJtIDkxMS43Nyw4MjIuMTQ4IGMgMCwxLjM0IC0wLjA5OCwyLjY3MiAtMC4yNDMsMy45NjEgNS4wMzUsLTYuMjE4IDEyLjc0NiwtMTAuMjMgMjEuNDAzLC0xMC4yMyAxNS4xOTksMCAyNy41MjMsMTIuMzIgMjcuNTIzLDI3LjUxOSAwLDQuMTMzIC0wLjkyMiw4LjAxMiAtMi41MzksMTEuNTI0IDUuNTE2LDEuOTEgMTAuMjExLDUuNTU4IDEzLjQ5NiwxMC4yNjkgMy40OTYsLTMuNTYyIDguMzYzLC01Ljc5MyAxMy43NTgsLTUuNzkzIDEwLjYzNywwIDE5LjI3Miw4LjYyMiAxOS4yNzIsMTkuMjgyIDAsNS41MzEgLTIuMzYsMTAuNSAtNi4wOTYsMTQuMDExIDcuMDQ2LDMuNDM4IDEyLjQwNiw5Ljc3OCAxNC41MjYsMTcuNDY5IDQuNDMsLTQuODcxIDEwLjU1LC04LjEyOSAxNy40NywtOC44NTEgLTIuNzgsLTMuMzQ4IC00LjQ2LC03LjY0OSAtNC40NiwtMTIuMzI5IDAsLTEwLjY0IDguNjIsLTE5LjI4OSAxOS4yNiwtMTkuMjg5IDEwLjY0LDAgMTkuMjcsOC42NDkgMTkuMjcsMTkuMjg5IDAsOC43MTEgLTUuNzgsMTYuMDU5IC0xMy43MiwxOC40NSA2LjEyLDUuMDM5IDEwLjAzLDEyLjY5OSAxMC4wMywyMS4yNSAwLDIuNTMxIC0wLjM3LDQuOTYxIC0xLDcuMjY5IDAuODIsLTAuMDc4IDEuNjcsLTAuMTIxIDIuNTIsLTAuMTIxIDMuODgsMCA3LjU3LDAuODAxIDEwLjkxLDIuMjQyIDAuMjksLTcuMzc5IDYuMzUsLTEzLjMyIDEzLjgzLC0xMy4zMiA3LjY2LDAgMTMuODcsNi4xOTkgMTMuODcsMTMuODc5IDAsNy40NzMgLTUuOTQsMTMuNTE5IC0xMy4zNSwxMy44MiAxLjQ2LDMuMzQgMi4yNyw3LjAzMSAyLjI3LDEwLjkxIDAsMi4zNiAtMC4zNyw0LjYyMSAtMC45Miw2LjgxMyBsIDAsMCBjIDYuOSwwIDEyLjQ5LDUuNjA5IDEyLjQ5LDEyLjUgMCw2Ljg5OCAtNS41OSwxMi40NzYgLTEyLjQ5LDEyLjQ3NiAtMC4zNywwIC0wLjcsLTAuMDg5IC0xLjA1LC0wLjEwOSAtMC43MiwxMC40MTEgLTYuMDYsMTkuNTExIC0xNC4wMywyNS4yNDEgMC4wNSwwLjc4IDAuMTEsMS41OSAwLjExLDIuNCAwLDE4Ljc4IC0xNS4yMiwzMy45OCAtMzMuOTcsMzMuOTggLTYuNTYsMCAtMTIuNjQsLTEuODcgLTE3LjgzLC01LjA4IDAuNzUsMS45NSAxLjE4LDQuMDggMS4xOCw2LjMyIDAsOS44NSAtNy45NywxNy44MSAtMTcuODEsMTcuODEgLTEuNzYsMCAtMy40NCwtMC4yNyAtNS4wNCwtMC43NCAwLjIzLDEuNTkgMC4zOCwzLjIxIDAuMzgsNC44NyAwLDE4Ljc3IC0xNS4yMDgsMzMuOTggLTMzLjk3OCwzMy45OCAtNS44LDAgLTExLjI2NSwtMS40NiAtMTYuMDU0LC00LjAyIC00LjMwOSw2Ljk4IC0xMS4wNDcsMTIuMzIgLTE5LjA3NCwxNC43NSAxLjAzMSwyLjI0IDEuNjI4LDQuNzQgMS42MjgsNy4zOCAwLDkuODIgLTcuOTkyLDE3LjgxIC0xNy44MjgsMTcuODEgLTIuMzA0LDAgLTQuNTA3LC0wLjQ2IC02LjUyMywtMS4yNyAtMC4xMzMsMTguNjYgLTE1LjI3NywzMy43NyAtMzMuOTgxLDMzLjc3IC0zLjAwNywwIC01LjkxOCwtMC40NCAtOC43MDMsLTEuMTggLTIuNzA3LDYuMzcgLTkuMDI3LDEwLjgzIC0xNi4zOSwxMC44MyAtNC4zNCwwIC04LjMyMSwtMS41NSAtMTEuNDE0LC00LjE0IC0xLjE4OCw4LjY3IC04LjYxOCwxNS4zOCAtMTcuNjI5LDE1LjM4IC0zLjQxOCwwIC02LjYwMiwtMC45OCAtOS4zMTMsLTIuNjQgLTQ3LjEzMywtMTguMDUgLTg2LjI2NSwtMzMuMTQgLTEwMS4xODcsLTM5LjA5IC0zMy4yNjYsLTEzLjI4IC01OC4wMiwtNDguODQgLTU4LjAyLC04NC4wOCBsIDAsLTExMy41MTEgMTgzLjg3NSwtMTg2LjY2OCBjIDEuODc1LC0wLjQwMyAzLjgzNiwtMC42MjEgNS44MjgsLTAuNjIxIDEwLjIwNywwIDE5LjEwMiw1LjYwMSAyMy44NjQsMTMuODMyIDMuNzAzLC0xLjM5MSA3LjcwMywtMi4xOTIgMTEuODk4LC0yLjE5MiAxOC43NzcsMCAzMy45ODEsMTUuMjExIDMzLjk4MSwzMy45ODgiCiAgICAgICAgIGlkPSJwYXRoNDIiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PC9nPjwvZz48L3N2Zz4=">'},
+ GHS09:{nome:"Pericoloso per l'ambiente", svg:'<img alt="GHS09" style="width:100%;height:100%;display:block" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+PHN2ZwogICB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iCiAgIHhtbG5zOmNjPSJodHRwOi8vY3JlYXRpdmVjb21tb25zLm9yZy9ucyMiCiAgIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyIKICAgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogICB3aWR0aD0iNzAiCiAgIGhlaWdodD0iNzAiCiAgIGlkPSJzdmc5IgogICB4bWw6c3BhY2U9InByZXNlcnZlIj48ZGVmcyBpZD0iZGVmczYiIC8+PGcKICAgICB0cmFuc2Zvcm09Im1hdHJpeCgxLjI1LDAsMCwtMS4yNSwwLDcwKSIKICAgICBpZD0iZzEwIj48ZwogICAgICAgdHJhbnNmb3JtPSJzY2FsZSgwLjAyMiwwLjAyMikiCiAgICAgICBpZD0iZzEyIj48cGF0aAogICAgICAgICBkPSJNIDIyNDYuODgsMTIyMC4xMyBDIDIxNjIuMzIsMTEzNS41OSAxMzA0LjY1LDI3Ny44OTEgMTIyMC4xLDE5My4zMzIgMTEzNS41NSwyNzcuODkxIDI3Ny44NzUsMTEzNS41OSAxOTMuMzI4LDEyMjAuMTMgYyA4NC41NDcsODQuNTYgOTQyLjIyMiw5NDIuMjUgMTAyNi43NjIsMTAyNi43OSA4NC41NSwtODQuNTQgOTQyLjIzLC05NDIuMjMgMTAyNi43OSwtMTAyNi43OSB6IE0gMCwxMjIwLjEzIDEyMjAuMSwwIDI0NDAuMiwxMjIwLjEzIDEyMjAuMDksMjQ0MC4yNSAwLDEyMjAuMTMiCiAgICAgICAgIGlkPSJwYXRoMTQiCiAgICAgICAgIHN0eWxlPSJmaWxsOiNlZjJmMzI7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSA4MTMuNTIsMTIyMi40IDgwNS44LDAiCiAgICAgICAgIGlkPSJwYXRoMTYiCiAgICAgICAgIHN0eWxlPSJmaWxsOm5vbmU7c3Ryb2tlOiMxMDBmMGQ7c3Ryb2tlLXdpZHRoOjUwO3N0cm9rZS1saW5lY2FwOmJ1dHQ7c3Ryb2tlLWxpbmVqb2luOm1pdGVyO3N0cm9rZS1taXRlcmxpbWl0OjQ7c3Ryb2tlLW9wYWNpdHk6MTtzdHJva2UtZGFzaGFycmF5Om5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSA5MjEuOTk2LDEwMTMuMzEgOTkuMTg0LDU3LjMzIDQuNjUsMjQ0Ljc1IC0xMjIuNDI0LDY2LjYzIGMgMCwwIC0xOC42MDEsMTIuNCAtNDQuOTM3LDQuNjYgLTkuMjk3LC0zLjEyIC0yMS42OTYsLTYuMjEgLTIxLjY5NiwtNi4yMSAwLDAgNjYuNjMzLDU1Ljc4IDc5LjAzOSw1MS4xNSAxMi4zOTEsLTQuNjUgOTkuMTc4LC00Ni41MSA5OS4xNzgsLTQ2LjUxIDAsMCAtOS4zMSw2NS4wOSAtMzIuNTQ5LDgzLjY5IC0yMy4yNDYsMTguNjEgLTExMy4xMzIsODkuODggLTExMy4xMzIsODkuODggbCAwLDE3LjA2IDEyMi40MjUsLTc0LjM4IGMgMCwwIDQuNjUzLDcxLjI2IC0yMC4xNCwxMTMuMTEgLTI0LjgwMSw0MS44NCAtNDMuMzkxLDc5LjA0IC00My4zOTEsNzkuMDQgbCA3Ljc1LDYuMiA2MC40MzQsLTkyLjk4IDIwLjE0Myw2My41NCAxMi40LDMuMDkgYyAwLDAgLTE1LjUsLTg5Ljg4IC00LjY0LC0xMTcuNzcgMTAuODUsLTI3Ljg5IDUxLjEzLC0xNzkuNzYgNTEuMTMsLTE3OS43NiBsIDYwLjQzLDg2Ljc4IGMgMCwwIDEuNTYsMzUuNjQgLTEuNTQsNjAuNDMgLTMuMSwyNC44IC03Ljc1LDEzOS40NyAtNy43NSwxMzkuNDcgbCAxMC44NSwwIDE3LjA1LC0xMjUuNTMgOTcuNTgsMTEzLjEzIDAsLTEyLjM5IGMgMCwwIC05Ni4wNCwtMTIwLjg4IC05MS4zOSwtMTQ3LjIzIDQuNjYsLTI2LjM1IDkuMzEsLTQxLjgzIC03Ljc1LC03OS4wMyAtMTcuMDUsLTM3LjE5IC0yNy44OSwtNjMuNTQgLTI3Ljg5LC02My41NCAwLDAgNTEuMTQsNjAuNDQgNzQuMzgsNjUuMDkgMjMuMjYsMS41NiA1NC4yLC0xLjU1IDc1LjksMTcuMDUgMjEuNjksMTguNiA3NC4zOSw3Ny40OSA3NC4zOSw3Ny40OSBsIC04Mi4xMywtMTI3LjA4IGMgMCwwIC0zOC43MSwtMS41NSAtNTQuMjEsLTE4LjYgLTE1LjQ5LC0xNy4wNCAtNzkuMDMsLTg5Ljg4IC03OS4wMywtODkuODggbCAwLC0xNjcuMjYgMTA1LjM2LC01Mi42OSAtMTI4LjYxLC0xOC42IC0zMC45OSwtNDQuOTI4IC00MS44NSwzNS42MzggLTExNi4yMjQsLTEwLjg0IgogICAgICAgICBpZD0icGF0aDE4IgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gOTIxLjk5NiwxMDEzLjMxIDk5LjE4NCw1Ny4zMyA0LjY1LDI0NC43NSAtMTIyLjQyNCw2Ni42MyBjIDAsMCAtMTguNjAxLDEyLjQgLTQ0LjkzNyw0LjY2IC05LjI5NywtMy4xMiAtMjEuNjk2LC02LjIxIC0yMS42OTYsLTYuMjEgMCwwIDY2LjYzMyw1NS43OCA3OS4wMzksNTEuMTUgMTIuMzkxLC00LjY1IDk5LjE3OCwtNDYuNTEgOTkuMTc4LC00Ni41MSAwLDAgLTkuMzEsNjUuMDkgLTMyLjU0OSw4My42OSAtMjMuMjQ2LDE4LjYxIC0xMTMuMTMyLDg5Ljg4IC0xMTMuMTMyLDg5Ljg4IGwgMCwxNy4wNiAxMjIuNDI1LC03NC4zOCBjIDAsMCA0LjY1Myw3MS4yNiAtMjAuMTQsMTEzLjExIC0yNC44MDEsNDEuODQgLTQzLjM5MSw3OS4wNCAtNDMuMzkxLDc5LjA0IGwgNy43NSw2LjIgNjAuNDM0LC05Mi45OCAyMC4xNDMsNjMuNTQgMTIuNCwzLjA5IGMgMCwwIC0xNS41LC04OS44OCAtNC42NCwtMTE3Ljc3IDEwLjg1LC0yNy44OSA1MS4xMywtMTc5Ljc2IDUxLjEzLC0xNzkuNzYgbCA2MC40Myw4Ni43OCBjIDAsMCAxLjU2LDM1LjY0IC0xLjU0LDYwLjQzIC0zLjEsMjQuOCAtNy43NSwxMzkuNDcgLTcuNzUsMTM5LjQ3IGwgMTAuODUsMCAxNy4wNSwtMTI1LjUzIDk3LjU4LDExMy4xMyAwLC0xMi4zOSBjIDAsMCAtOTYuMDQsLTEyMC44OCAtOTEuMzksLTE0Ny4yMyA0LjY2LC0yNi4zNSA5LjMxLC00MS44MyAtNy43NSwtNzkuMDMgLTE3LjA1LC0zNy4xOSAtMjcuODksLTYzLjU0IC0yNy44OSwtNjMuNTQgMCwwIDUxLjE0LDYwLjQ0IDc0LjM4LDY1LjA5IDIzLjI2LDEuNTYgNTQuMiwtMS41NSA3NS45LDE3LjA1IDIxLjY5LDE4LjYgNzQuMzksNzcuNDkgNzQuMzksNzcuNDkgbCAtODIuMTMsLTEyNy4wOCBjIDAsMCAtMzguNzEsLTEuNTUgLTU0LjIxLC0xOC42IC0xNS40OSwtMTcuMDQgLTc5LjAzLC04OS44OCAtNzkuMDMsLTg5Ljg4IGwgMCwtMTY3LjI2IDEwNS4zNiwtNTIuNjkgLTEyOC42MSwtMTguNiAtMzAuOTksLTQ0LjkyOCAtNDEuODUsMzUuNjM4IC0xMTYuMjI0LC0xMC44NCB6IgogICAgICAgICBpZD0icGF0aDIwIgogICAgICAgICBzdHlsZT0iZmlsbDpub25lO3N0cm9rZTojMTAwZjBkO3N0cm9rZS13aWR0aDo0MDtzdHJva2UtbGluZWNhcDpidXR0O3N0cm9rZS1saW5lam9pbjptaXRlcjtzdHJva2UtbWl0ZXJsaW1pdDo0O3N0cm9rZS1vcGFjaXR5OjE7c3Ryb2tlLWRhc2hhcnJheTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gODE2LjYzMyw4NjcuNjI5IGMgMCwwIDE0MS4wMTIsNDEuODQgMTY0LjI1OCwyNC44MDEgMzAuOTg5LDEzLjk0MSAyNTcuMjI5LDExMC4wMyAyNTcuMjI5LDEwMy44MiAwLC02LjIxMSAyNjAuMzMsODAuNTkgMjYwLjMzLDgwLjU5IGwgOTQuNTIsLTY4LjE4IC04OS44NywtNDMuMzk4IDEyMC44NywtMTAuODY0IC0zMi41MywtNDMuMzg2IDY2LjYzLDAgMS41NSwtNDguMDMyIC04NDIuOTg3LDQuNjQ5IgogICAgICAgICBpZD0icGF0aDIyIgogICAgICAgICBzdHlsZT0iZmlsbDojMTAwZjBkO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gODE2LjYzMyw4NjcuNjI5IGMgMCwwIDE0MS4wMTIsNDEuODQgMTY0LjI1OCwyNC44MDEgMzAuOTg5LDEzLjk0MSAyNTcuMjI5LDExMC4wMyAyNTcuMjI5LDEwMy44MiAwLC02LjIxMSAyNjAuMzMsODAuNTkgMjYwLjMzLDgwLjU5IGwgOTQuNTIsLTY4LjE4IC04OS44NywtNDMuMzk4IDEyMC44NywtMTAuODY0IC0zMi41MywtNDMuMzg2IDY2LjYzLDAgMS41NSwtNDguMDMyIC04NDIuOTg3LDQuNjQ5IHoiCiAgICAgICAgIGlkPSJwYXRoMjQiCiAgICAgICAgIHN0eWxlPSJmaWxsOm5vbmU7c3Ryb2tlOiMxMDBmMGQ7c3Ryb2tlLXdpZHRoOjQwO3N0cm9rZS1saW5lY2FwOmJ1dHQ7c3Ryb2tlLWxpbmVqb2luOm1pdGVyO3N0cm9rZS1taXRlcmxpbWl0OjQ7c3Ryb2tlLW9wYWNpdHk6MTtzdHJva2UtZGFzaGFycmF5Om5vbmUiIC8+PHBhdGgKICAgICAgICAgZD0ibSAxMTMxLjIxLDk5MC4wMzkgYyAwLDAgNDAuMjksMS41NjMgNTguODgsOS4zMTMgMjkuNSwxMi4yODggNzcuNDYsMzIuNTM4IDEwNS4zNSw3Mi44MjggMjguODUsNDEuNjYgMTMxLjcyLDIxNi44NiAyNzIuNzQsMjAyLjkxIC03Ljc0LC0xOC41OSAtMzIuNTUsLTU4Ljg5IC0zMi41NSwtNTguODkgbCAxMDAuNzQsMzEgYyAwLDAgMS41NiwtMTMzLjE4IC0xODkuMDcsLTIxOC40MSAtODguMzMsLTMwLjk4OSAtMTA2LjkyLC0zMi41NCAtMTE0LjY3LC00My4zOTIgLTcuNzQsLTEwLjgzOSAtNDMuMzgsLTY1LjA3OCAtNDMuMzgsLTY1LjA3OCBsIC0xNTguMDQsNjkuNzE5IgogICAgICAgICBpZD0icGF0aDI2IgogICAgICAgICBzdHlsZT0iZmlsbDojZmZmZmZmO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTEzMS4yMSw5OTAuMDM5IGMgMCwwIDQwLjI5LDEuNTYzIDU4Ljg4LDkuMzEzIDI5LjUsMTIuMjg4IDc3LjQ2LDMyLjUzOCAxMDUuMzUsNzIuODI4IDI4Ljg1LDQxLjY2IDEzMS43MiwyMTYuODYgMjcyLjc0LDIwMi45MSAtNy43NCwtMTguNTkgLTMyLjU1LC01OC44OSAtMzIuNTUsLTU4Ljg5IGwgMTAwLjc0LDMxIGMgMCwwIDEuNTYsLTEzMy4xOCAtMTg5LjA3LC0yMTguNDEgLTg4LjMzLC0zMC45ODkgLTEwNi45MiwtMzIuNTQgLTExNC42NywtNDMuMzkyIC03Ljc0LC0xMC44MzkgLTQzLjM4LC02NS4wNzggLTQzLjM4LC02NS4wNzggbCAtMTU4LjA0LDY5LjcxOSB6IgogICAgICAgICBpZD0icGF0aDI4IgogICAgICAgICBzdHlsZT0iZmlsbDpub25lO3N0cm9rZTojMTAwZjBkO3N0cm9rZS13aWR0aDo1MDtzdHJva2UtbGluZWNhcDpidXR0O3N0cm9rZS1saW5lam9pbjptaXRlcjtzdHJva2UtbWl0ZXJsaW1pdDo0O3N0cm9rZS1vcGFjaXR5OjE7c3Ryb2tlLWRhc2hhcnJheTpub25lIiAvPjxwYXRoCiAgICAgICAgIGQ9Im0gMTU0My4zOSwxMTY5LjA1IGMgMCw4LjEyIDcuNjQsMTQuNjkgMTcuMDUsMTQuNjkgOS40MSwwIDE3LjA0LC02LjU3IDE3LjA0LC0xNC42OSAwLC04LjEzIC03LjYzLC0xNC43MyAtMTcuMDQsLTE0LjczIC05LjQxLDAgLTE3LjA1LDYuNiAtMTcuMDUsMTQuNzMiCiAgICAgICAgIGlkPSJwYXRoMzAiCiAgICAgICAgIHN0eWxlPSJmaWxsOiMxMDBmMGQ7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiIC8+PC9nPjwvZz48L3N2Zz4=">'}
+};
+
+/* ============================================================
+   FRASI H / EUH (testo italiano)
+   ============================================================ */
+const FRASI_H = {
+ "H200":"Esplosivo instabile.","H201":"Esplosivo; pericolo di esplosione di massa.","H202":"Esplosivo; grave pericolo di proiezione.","H203":"Esplosivo; pericolo di incendio, di spostamento d'aria o di proiezione.","H204":"Pericolo di incendio o di proiezione.",
+ "H220":"Gas altamente infiammabile.","H221":"Gas infiammabile.","H222":"Aerosol altamente infiammabile.","H223":"Aerosol infiammabile.",
+ "H224":"Liquido e vapori altamente infiammabili.","H225":"Liquido e vapori facilmente infiammabili.","H226":"Liquido e vapori infiammabili.","H228":"Solido infiammabile.",
+ "H240":"Rischio di esplosione per riscaldamento.","H241":"Rischio d'incendio o di esplosione per riscaldamento.","H242":"Rischio d'incendio per riscaldamento.",
+ "H250":"Spontaneamente infiammabile all'aria.","H251":"Autoriscaldante; può infiammarsi.","H252":"Autoriscaldante in grandi quantità; può infiammarsi.",
+ "H260":"A contatto con l'acqua libera gas infiammabili che possono infiammarsi spontaneamente.","H261":"A contatto con l'acqua libera gas infiammabili.",
+ "H270":"Può provocare o aggravare un incendio; comburente.","H271":"Può provocare un incendio o un'esplosione; molto comburente.","H272":"Può aggravare un incendio; comburente.",
+ "H280":"Contiene gas sotto pressione; può esplodere se riscaldato.","H281":"Contiene gas refrigerato; può provocare ustioni o lesioni criogeniche.",
+ "H290":"Può essere corrosivo per i metalli.",
+ "H300":"Letale se ingerito.","H301":"Tossico se ingerito.","H302":"Nocivo se ingerito.","H304":"Può essere letale in caso di ingestione e di penetrazione nelle vie respiratorie.",
+ "H310":"Letale per contatto con la pelle.","H311":"Tossico per contatto con la pelle.","H312":"Nocivo per contatto con la pelle.",
+ "H314":"Provoca gravi ustioni cutanee e gravi lesioni oculari.","H315":"Provoca irritazione cutanea.","H317":"Può provocare una reazione allergica cutanea.",
+ "H318":"Provoca gravi lesioni oculari.","H319":"Provoca grave irritazione oculare.",
+ "H330":"Letale se inalato.","H331":"Tossico se inalato.","H332":"Nocivo se inalato.","H334":"Può provocare sintomi allergici o asmatici o difficoltà respiratorie se inalato.","H335":"Può irritare le vie respiratorie.","H336":"Può provocare sonnolenza o vertigini.",
+ "H340":"Può provocare alterazioni genetiche.","H341":"Sospettato di provocare alterazioni genetiche.",
+ "H350":"Può provocare il cancro.","H350i":"Può provocare il cancro se inalato.","H351":"Sospettato di provocare il cancro.",
+ "H360":"Può nuocere alla fertilità o al feto.","H360D":"Può nuocere al feto.","H360F":"Può nuocere alla fertilità.","H360FD":"Può nuocere alla fertilità. Può nuocere al feto.","H361":"Sospettato di nuocere alla fertilità o al feto.","H361d":"Sospettato di nuocere al feto.","H361f":"Sospettato di nuocere alla fertilità.","H362":"Può essere nocivo per i lattanti allattati al seno.",
+ "H370":"Provoca danni agli organi.","H371":"Può provocare danni agli organi.","H372":"Provoca danni agli organi in caso di esposizione prolungata o ripetuta.","H373":"Può provocare danni agli organi in caso di esposizione prolungata o ripetuta.",
+ "H300+H310":"Letale se ingerito o a contatto con la pelle.","H300+H310+H330":"Letale se ingerito, a contatto con la pelle o se inalato.","H301+H311":"Tossico se ingerito o a contatto con la pelle.","H301+H311+H331":"Tossico se ingerito, a contatto con la pelle o se inalato.","H301+H331":"Tossico se ingerito o inalato.","H302+H312":"Nocivo se ingerito o a contatto con la pelle.","H302+H312+H332":"Nocivo se ingerito, a contatto con la pelle o se inalato.","H302+H332":"Nocivo se ingerito o inalato.","H311+H331":"Tossico per contatto con la pelle o se inalato.","H312+H332":"Nocivo per contatto con la pelle o se inalato.",
+ "H229":"Contenitore pressurizzato: può esplodere se riscaldato.","H360Fd":"Può nuocere alla fertilità. Sospettato di nuocere al feto.","H360Df":"Può nuocere al feto. Sospettato di nuocere alla fertilità.","H361fd":"Sospettato di nuocere alla fertilità. Sospettato di nuocere al feto.",
+ "H303":"Può essere nocivo se ingerito. (GHS, non CLP)","H305":"Può essere nocivo in caso di ingestione e penetrazione nelle vie respiratorie. (GHS, non CLP)","H313":"Può essere nocivo a contatto con la pelle. (GHS, non CLP)","H316":"Provoca lieve irritazione cutanea. (GHS, non CLP)","H320":"Provoca irritazione oculare. (GHS, non CLP)","H333":"Può essere nocivo se inalato. (GHS, non CLP)",
+ "H400":"Molto tossico per gli organismi acquatici.","H401":"Tossico per gli organismi acquatici. (GHS, non CLP)","H402":"Nocivo per gli organismi acquatici. (GHS, non CLP)","H410":"Molto tossico per gli organismi acquatici con effetti di lunga durata.","H411":"Tossico per gli organismi acquatici con effetti di lunga durata.","H412":"Nocivo per gli organismi acquatici con effetti di lunga durata.","H413":"Può essere nocivo per gli organismi acquatici con effetti di lunga durata.","H420":"Nuoce alla salute pubblica e all'ambiente distruggendo l'ozono dello strato superiore dell'atmosfera.",
+ "EUH014":"Reagisce violentemente con l'acqua.","EUH018":"Durante l'uso può formarsi una miscela vapore-aria esplosiva/infiammabile.","EUH019":"Può formare perossidi esplosivi.","EUH029":"A contatto con l'acqua libera un gas tossico.","EUH031":"A contatto con acidi libera gas tossici.","EUH032":"A contatto con acidi libera gas molto tossici.","EUH066":"L'esposizione ripetuta può provocare secchezza o screpolature della pelle.","EUH071":"Corrosivo per le vie respiratorie."
+};
+
+/* ============================================================
+   FRASI P (testo italiano) — selezione delle più usate
+   ============================================================ */
+const FRASI_P = {
+ "P101":"In caso di consultazione di un medico, tenere a disposizione il contenitore o l'etichetta del prodotto.","P102":"Tenere fuori dalla portata dei bambini.","P103":"Leggere attentamente e seguire tutte le istruzioni.",
+ "P201":"Procurarsi istruzioni specifiche prima dell'uso.","P202":"Non manipolare prima di avere letto e compreso tutte le avvertenze.","P203":"Procurarsi, leggere e seguire tutte le istruzioni di sicurezza prima dell'uso.","P211":"Non vaporizzare su una fiamma libera o altra fonte di accensione.",
+ "P210":"Tenere lontano da fonti di calore, superfici calde, scintille, fiamme libere o altre fonti di accensione. Non fumare.",
+ "P220":"Tenere lontano da indumenti e altri materiali combustibili.","P222":"Evitare il contatto con l'aria.","P223":"Evitare qualunque contatto con l'acqua.",
+ "P230":"Mantenere umido con…","P231":"Manipolare e conservare in atmosfera di gas inerte.","P231+P232":"Manipolare e conservare in atmosfera di gas inerte. Proteggere dall'umidità.","P232":"Proteggere dall'umidità.","P233":"Tenere il recipiente ben chiuso.","P234":"Conservare soltanto nell'imballaggio originale.","P235":"Conservare in luogo fresco.",
+ "P240":"Mettere a terra e a massa il contenitore e il dispositivo ricevente.","P241":"Utilizzare impianti elettrici/di ventilazione/d'illuminazione a prova di esplosione.","P242":"Utilizzare utensili antiscintilla.","P243":"Fare in modo di prevenire le scariche elettrostatiche.","P244":"Mantenere le valvole e i raccordi liberi da olio e grasso.",
+ "P250":"Evitare le abrasioni/gli urti/gli attriti.","P251":"Non perforare né bruciare, neppure dopo l'uso.",
+ "P260":"Non respirare la polvere/i fumi/i gas/la nebbia/i vapori/gli aerosol.","P261":"Evitare di respirare la polvere/i fumi/i gas/la nebbia/i vapori/gli aerosol.",
+ "P262":"Evitare il contatto con gli occhi, la pelle o gli indumenti.","P263":"Evitare il contatto durante la gravidanza e l'allattamento.","P264":"Lavare accuratamente le mani dopo l'uso.",
+ "P270":"Non mangiare, né bere, né fumare durante l'uso.","P271":"Utilizzare soltanto all'aperto o in luogo ben ventilato.","P272":"Gli indumenti da lavoro contaminati non devono essere portati fuori dal luogo di lavoro.","P273":"Non disperdere nell'ambiente.",
+ "P280":"Indossare guanti/indumenti protettivi/proteggere gli occhi/il viso.","P283":"Indossare indumenti resistenti al fuoco o alla fiamma.","P284":"[Quando la ventilazione del locale è insufficiente] utilizzare un apparecchio di protezione respiratoria.",
+ "P301+P310":"IN CASO DI INGESTIONE: contattare immediatamente un CENTRO ANTIVELENI o un medico.",
+ "P301+P312":"IN CASO DI INGESTIONE: in presenza di malessere, contattare un CENTRO ANTIVELENI o un medico.",
+ "P301+P330+P331":"IN CASO DI INGESTIONE: sciacquare la bocca. NON provocare il vomito.",
+ "P302+P352":"IN CASO DI CONTATTO CON LA PELLE: lavare abbondantemente con acqua e sapone.",
+ "P303+P361+P353":"IN CASO DI CONTATTO CON LA PELLE (o con i capelli): togliersi di dosso immediatamente tutti gli indumenti contaminati. Sciacquare la pelle con acqua o fare una doccia.",
+ "P304+P340":"IN CASO DI INALAZIONE: trasportare l'infortunato all'aria aperta e mantenerlo a riposo in posizione che favorisca la respirazione.",
+ "P305+P351+P338":"IN CASO DI CONTATTO CON GLI OCCHI: sciacquare accuratamente per parecchi minuti. Togliere le eventuali lenti a contatto se è agevole farlo. Continuare a sciacquare.",
+ "P308+P313":"IN CASO di esposizione o di possibile esposizione: consultare un medico.",
+ "P302+P334":"IN CASO DI CONTATTO CON LA PELLE: immergere in acqua fredda o avvolgere con un bendaggio umido.",
+ "P302+P361+P354":"IN CASO DI CONTATTO CON LA PELLE: togliersi di dosso immediatamente tutti gli indumenti contaminati. Risciacquare immediatamente la pelle con acqua per parecchi minuti.",
+ "P305+P354+P338":"IN CASO DI CONTATTO CON GLI OCCHI: sciacquare immediatamente con acqua per parecchi minuti. Togliere le eventuali lenti a contatto se è agevole farlo. Continuare a sciacquare.",
+ "P316":"Consultare urgentemente un medico.","P317":"Consultare un medico.","P318":"In caso di esposizione o di possibile esposizione, consultare un medico.","P319":"In caso di malessere, consultare un medico.",
+ "P306+P360":"IN CASO DI CONTATTO CON GLI INDUMENTI: sciacquare immediatamente e abbondantemente gli indumenti contaminati e la pelle prima di togliersi gli indumenti.",
+ "P308+P311":"IN CASO di esposizione o di possibile esposizione: contattare un CENTRO ANTIVELENI o un medico.",
+ "P310":"Contattare immediatamente un CENTRO ANTIVELENI o un medico.","P311":"Contattare un CENTRO ANTIVELENI o un medico.","P312":"In caso di malessere, contattare un CENTRO ANTIVELENI o un medico.","P313":"Consultare un medico.","P314":"In caso di malessere, consultare un medico.","P315":"Consultare immediatamente un medico.",
+ "P320":"Trattamento specifico urgente (vedere le istruzioni su questa etichetta).","P321":"Trattamento specifico (vedere le istruzioni su questa etichetta).","P330":"Sciacquare la bocca.","P331":"NON provocare il vomito.","P334":"Immergere in acqua fredda o avvolgere con un bendaggio umido.","P335":"Rimuovere le particelle depositate sulla pelle.","P336":"Sgelare le parti congelate usando acqua tiepida. Non sfregare la parte interessata.",
+ "P332+P313":"In caso di irritazione della pelle: consultare un medico.","P333+P313":"In caso di irritazione o eruzione della pelle: consultare un medico.","P337+P313":"Se l'irritazione degli occhi persiste, consultare un medico.","P342+P311":"In caso di sintomi respiratori: contattare un CENTRO ANTIVELENI o un medico.",
+ "P360":"Sciacquare immediatamente e abbondantemente gli indumenti contaminati e la pelle prima di togliersi gli indumenti.","P361":"Togliersi di dosso immediatamente tutti gli indumenti contaminati.","P362":"Togliersi di dosso gli indumenti contaminati.","P362+P364":"Togliere tutti gli indumenti contaminati e lavarli prima di indossarli nuovamente.","P363":"Lavare gli indumenti contaminati prima di indossarli nuovamente.","P364":"E lavarli prima di indossarli nuovamente.",
+ "P370+P376":"In caso d'incendio: bloccare la perdita, se non c'è pericolo.","P370+P378":"In caso d'incendio: utilizzare CO2, polvere chimica o schiuma per estinguere.","P371+P380+P375":"In caso di incendio grave e di grandi quantità: evacuare la zona. Utilizzare i mezzi estinguenti a distanza per il rischio di esplosione.",
+ "P375":"Rischio di esplosione. Utilizzare i mezzi estinguenti a grande distanza.","P376":"Bloccare la perdita, se non c'è pericolo.","P377":"In caso d'incendio dovuto a perdita di gas, non estinguere a meno che non sia possibile bloccare la perdita senza pericolo.","P378":"Utilizzare mezzi estinguenti idonei per estinguere.","P380":"Evacuare la zona.","P381":"In caso di perdita, eliminare ogni fonte di accensione.",
+ "P390":"Assorbire la fuoriuscita per evitare danni materiali.","P391":"Raccogliere il materiale fuoriuscito.",
+ "P282":"Utilizzare guanti termici e schermo facciale o protezione per gli occhi.",
+ "P401":"Conservare secondo le istruzioni.","P402":"Conservare in luogo asciutto.","P402+P404":"Conservare in luogo asciutto e in recipiente chiuso.","P403":"Conservare in luogo ben ventilato.","P403+P233":"Conservare in luogo ben ventilato. Tenere il recipiente ben chiuso.","P403+P235":"Conservare in luogo fresco e ben ventilato.","P404":"Conservare in un recipiente chiuso.",
+ "P405":"Conservare sotto chiave.","P406":"Conservare in recipiente resistente alla corrosione provvisto di rivestimento interno resistente.","P407":"Mantenere uno spazio libero tra gli scaffali o i pallet.","P410":"Proteggere dai raggi solari.","P410+P403":"Proteggere dai raggi solari. Conservare in luogo ben ventilato.","P410+P412":"Proteggere dai raggi solari. Non esporre a temperature superiori a 50 °C/122 °F.","P411":"Conservare a temperature non superiori a…","P412":"Non esporre a temperature superiori a 50 °C/122 °F.","P413":"Conservare le rinfuse di peso superiore a … a temperature non superiori a…","P420":"Conservare separatamente.",
+ "P501":"Smaltire il prodotto/recipiente in conformità alla normativa vigente.","P502":"Chiedere informazioni al produttore o fornitore per il recupero o il riciclaggio."
+};
+
+/* ============================================================
+   ARCHIVIO SOSTANZE COMUNI (classificazioni tipiche — verificare con SDS)
+   ============================================================ */
+const PRESETS = [
+ {nome:"Acetone", cas:"67-64-1", conc:"≥ 99,5 %", picto:["GHS02","GHS07"], avv:"Pericolo", h:["H225","H319","H336","EUH066"], p:["P210","P233","P280","P305+P351+P338","P403+P233"]},
+ {nome:"Etanolo", cas:"64-17-5", conc:"96 %", picto:["GHS02","GHS07"], avv:"Pericolo", h:["H225","H319"], p:["P210","P233","P280","P305+P351+P338"]},
+ {nome:"Metanolo", cas:"67-56-1", conc:"≥ 99,8 %", picto:["GHS02","GHS06","GHS08"], avv:"Pericolo", h:["H225","H301+H311+H331","H370"], p:["P210","P233","P280","P302+P352","P304+P340","P308+P313"]},
+ {nome:"2-Propanolo (isopropanolo)", cas:"67-63-0", conc:"≥ 99,5 %", picto:["GHS02","GHS07"], avv:"Pericolo", h:["H225","H319","H336"], p:["P210","P233","P305+P351+P338"]},
+ {nome:"Acido cloridrico", cas:"7647-01-0", conc:"37 %", picto:["GHS05","GHS07"], avv:"Pericolo", h:["H290","H314","H335"], p:["P260","P280","P303+P361+P353","P305+P351+P338","P310"]},
+ {nome:"Acido solforico", cas:"7664-93-9", conc:"96 %", picto:["GHS05"], avv:"Pericolo", h:["H290","H314"], p:["P260","P280","P303+P361+P353","P305+P351+P338","P310"]},
+ {nome:"Acido nitrico", cas:"7697-37-2", conc:"65 %", picto:["GHS03","GHS05"], avv:"Pericolo", h:["H272","H290","H314","EUH071"], p:["P220","P260","P280","P303+P361+P353","P305+P351+P338","P310"]},
+ {nome:"Acido acetico glaciale", cas:"64-19-7", conc:"≥ 99 %", picto:["GHS02","GHS05"], avv:"Pericolo", h:["H226","H314"], p:["P210","P280","P303+P361+P353","P305+P351+P338","P310"]},
+ {nome:"Idrossido di sodio", cas:"1310-73-2", conc:"in pastiglie", picto:["GHS05"], avv:"Pericolo", h:["H290","H314"], p:["P260","P280","P303+P361+P353","P305+P351+P338","P310"]},
+ {nome:"Ammoniaca soluzione", cas:"1336-21-6", conc:"25 %", picto:["GHS05","GHS07","GHS09"], avv:"Pericolo", h:["H290","H314","H335","H400"], p:["P260","P273","P280","P303+P361+P353","P305+P351+P338","P310"]},
+ {nome:"Perossido di idrogeno (acqua ossigenata)", cas:"7722-84-1", conc:"30 %", picto:["GHS05","GHS07"], avv:"Pericolo", h:["H302","H318"], p:["P280","P301+P312","P305+P351+P338","P310"]},
+ {nome:"Ipoclorito di sodio soluzione", cas:"7681-52-9", conc:"~ 14 % Cl attivo", picto:["GHS05","GHS09"], avv:"Pericolo", h:["H290","H314","H400","EUH031"], p:["P260","P273","P280","P303+P361+P353","P305+P351+P338","P310"]},
+ {nome:"Toluene", cas:"108-88-3", conc:"≥ 99,5 %", picto:["GHS02","GHS07","GHS08"], avv:"Pericolo", h:["H225","H304","H315","H336","H361d","H373"], p:["P210","P240","P280","P301+P310","P331","P302+P352"]},
+ {nome:"Diclorometano", cas:"75-09-2", conc:"≥ 99,5 %", picto:["GHS07","GHS08"], avv:"Attenzione", h:["H315","H319","H335","H336","H351","H373"], p:["P260","P280","P305+P351+P338","P308+P313"]},
+ {nome:"Cloroformio", cas:"67-66-3", conc:"≥ 99 %", picto:["GHS06","GHS08"], avv:"Pericolo", h:["H302","H315","H319","H331","H351","H361d","H372"], p:["P260","P280","P301+P312","P304+P340","P308+P313"]},
+ {nome:"Acetonitrile", cas:"75-05-8", conc:"≥ 99,9 %", picto:["GHS02","GHS07"], avv:"Pericolo", h:["H225","H302+H312+H332","H319"], p:["P210","P280","P302+P352","P304+P340","P305+P351+P338"]},
+ {nome:"Etere dietilico", cas:"60-29-7", conc:"≥ 99,5 %", picto:["GHS02","GHS07"], avv:"Pericolo", h:["H224","H302","H336","EUH019","EUH066"], p:["P210","P233","P240","P403+P235"]},
+ {nome:"n-Esano", cas:"110-54-3", conc:"≥ 95 %", picto:["GHS02","GHS07","GHS08","GHS09"], avv:"Pericolo", h:["H225","H304","H315","H336","H361f","H373","H411"], p:["P210","P273","P280","P301+P310","P331"]},
+ {nome:"Formaldeide soluzione (formalina)", cas:"50-00-0", conc:"37 %", picto:["GHS05","GHS06","GHS08"], avv:"Pericolo", h:["H301+H311+H331","H314","H317","H341","H350"], p:["P201","P260","P280","P303+P361+P353","P304+P340","P308+P313"]},
+ {nome:"Dimetilsolfossido (DMSO)", cas:"67-68-5", conc:"≥ 99,5 %", picto:[], avv:"", h:[], p:["P262","P264"]},
+ {nome:"Acqua deionizzata", cas:"7732-18-5", conc:"deionizzata / MilliQ", picto:[], avv:"", h:[], p:[]},
+ {nome:"Acqua distillata", cas:"7732-18-5", conc:"distillata", picto:[], avv:"", h:[], p:[]},
+ {nome:"Azoto liquido", cas:"7727-37-9", conc:"criogenico", picto:["GHS04"], avv:"Attenzione", h:["H281"], p:["P282","P403"]}
+];
+
+/* ============================================================
+   STATO
+   ============================================================ */
+const stato = {
+  pictoSel: new Set(),
+  hSel: new Set(),
+  pSel: new Set(),
+  cid: null   // CID PubChem dell'ultima sostanza importata (per il link QR)
+};
+let stepCorrente = 1;
+
+/* ============================================================
+   COSTRUZIONE UI
+   ============================================================ */
+/* ---------- Ricerca unificata: archivio locale + PubChem ---------- */
+const PUBCHEM = "https://pubchem.ncbi.nlm.nih.gov/rest";
+let timerRicerca = null;
+
+/* Traduzioni IT → EN dei nomi più comuni, per interrogare PubChem in italiano */
+const TRADUZIONI = {
+ "etanolo":"ethanol","alcol etilico":"ethanol","alcool etilico":"ethanol","metanolo":"methanol","isopropanolo":"isopropanol","alcol isopropilico":"isopropanol","glicerolo":"glycerol","glicerina":"glycerol","glicole etilenico":"ethylene glycol",
+ "acido cloridrico":"hydrochloric acid","acido solforico":"sulfuric acid","acido nitrico":"nitric acid","acido acetico":"acetic acid","acido fosforico":"phosphoric acid","acido formico":"formic acid","acido ossalico":"oxalic acid","acido citrico":"citric acid","acido borico":"boric acid","acido lattico":"lactic acid","acido tricloroacetico":"trichloroacetic acid",
+ "idrossido di sodio":"sodium hydroxide","soda caustica":"sodium hydroxide","idrossido di potassio":"potassium hydroxide","idrossido di ammonio":"ammonium hydroxide","ammoniaca":"ammonium hydroxide",
+ "acqua ossigenata":"hydrogen peroxide","perossido di idrogeno":"hydrogen peroxide","ipoclorito di sodio":"sodium hypochlorite","candeggina":"sodium hypochlorite",
+ "xilene":"xylene","diclorometano":"dichloromethane","cloroformio":"chloroform","etere etilico":"diethyl ether","etere dietilico":"diethyl ether","etere di petrolio":"petroleum ether","esano":"hexane","cicloesano":"cyclohexane","acetato di etile":"ethyl acetate","tetraidrofurano":"tetrahydrofuran","dimetilsolfossido":"dimethyl sulfoxide","dimetilformammide":"dimethylformamide","dmf":"dimethylformamide",
+ "formaldeide":"formaldehyde","formalina":"formaldehyde","fenolo":"phenol","anilina":"aniline","piridina":"pyridine","imidazolo":"imidazole","urea":"urea",
+ "cloruro di sodio":"sodium chloride","bicarbonato di sodio":"sodium bicarbonate","carbonato di sodio":"sodium carbonate","solfato di rame":"copper sulfate","solfato di magnesio":"magnesium sulfate","permanganato di potassio":"potassium permanganate","nitrato d'argento":"silver nitrate","nitrato di argento":"silver nitrate","iodio":"iodine","bromo":"bromine","azoto liquido":"nitrogen","azoto":"nitrogen",
+ "acrilammide":"acrylamide","bromuro di etidio":"ethidium bromide","sodio dodecil solfato":"sodium dodecyl sulfate","sds":"sodium dodecyl sulfate","mercaptoetanolo":"2-mercaptoethanol","beta-mercaptoetanolo":"2-mercaptoethanol","persolfato di ammonio":"ammonium persulfate","ditiotreitolo":"dithiothreitol","dtt":"dithiothreitol"
+};
+function traduci(q){ return TRADUZIONI[q.trim().toLowerCase()] || null; }
+
+function setStato(msg, err=false, spinner=false){
+  const d = document.getElementById("statoRicerca");
+  d.className = "stato-ricerca" + (err ? " err" : "");
+  d.innerHTML = (spinner ? '<span class="spinner"></span>' : "") + msg;
+}
+
+function costruisciPreset(filtro=""){
+  const box = document.getElementById("presetList");
+  const f = filtro.trim().toLowerCase();
+  box.innerHTML = "";
+  PRESETS
+    .filter(p => !f || p.nome.toLowerCase().includes(f) || p.cas.includes(f))
+    .forEach(p => aggiungiRiga(box, "<b>" + esc(p.nome) + "</b> <span class='cas'>CAS " + p.cas + " · " + esc(p.conc) + "</span>",
+      "loc", "archivio locale", () => applicaPreset(p)));
+  return box;
+}
+
+function aggiungiRiga(box, html, badgeCls, badgeTxt, onclick){
+  const d = document.createElement("div");
+  d.innerHTML = "<span>" + html + "</span><span class='badge " + badgeCls + "'>" + badgeTxt + "</span>";
+  d.onclick = onclick;
+  box.appendChild(d);
+}
+
+function cercaTutto(query){
+  const box = costruisciPreset(query);
+  const q = query.trim();
+  if(q.length < 3){ setStato(q ? "Continua a digitare… (min 3 caratteri per il database globale)" : ""); return; }
+
+  // CAS? → offri ricerca diretta; altrimenti autocomplete PubChem
+  if(/^\d{2,7}-\d{2}-\d$/.test(q)){
+    aggiungiRiga(box, "Cerca CAS <b>" + esc(q) + "</b> nel database globale", "pub", "PubChem", () => importaDaPubChem(q));
+    setStato("");
+    return;
+  }
+  clearTimeout(timerRicerca);
+  timerRicerca = setTimeout(async () => {
+    try{
+      const trad = traduci(q);
+      const qPub = trad || q;
+      setStato(trad ? "Cerco nel database globale come «" + esc(trad) + "»…" : "Cerco nel database globale…", false, true);
+      const r = await fetch(PUBCHEM + "/autocomplete/compound/" + encodeURIComponent(qPub) + "/json?limit=8");
+      const j = await r.json();
+      const voci = (j.dictionary_terms && j.dictionary_terms.compound) || [];
+      if(document.getElementById("cercaGlobale").value.trim() !== q) return; // query cambiata nel frattempo
+      voci.forEach(v => aggiungiRiga(box, esc(v), "pub", "PubChem",
+        () => importaDaPubChem(v)));
+      setStato(voci.length ? "Seleziona una voce: la classificazione GHS verrà importata automaticamente."
+                           : "Nessun risultato nel database globale (prova con il nome inglese o il CAS). Premi Invio per cercare comunque “" + esc(q) + "”.");
+    }catch(e){
+      setStato("Database globale non raggiungibile (sei offline?). L'archivio locale resta disponibile.", true);
+    }
+  }, 350);
+}
+
+/* Gerarchia di severità delle frasi H: la chiave "copre" i codici elencati */
+const COPRE_H = { "H314":["H315","H316","H318","H319","H320"], "H318":["H319","H320"],
+  "H300":["H301","H302","H303"], "H301":["H302","H303"], "H310":["H311","H312","H313"], "H311":["H312","H313"],
+  "H330":["H331","H332","H333"], "H331":["H332","H333"], "H350":["H351"], "H340":["H341"], "H360":["H361"],
+  "H370":["H371"], "H372":["H373"], "H410":["H400","H401","H402","H411","H412","H413"],
+  "H411":["H412","H413","H402"], "H400":["H401"] };
+function filtraRidondanzeH(hSet){
+  const coperte = new Set();
+  hSet.forEach(sel => sel.split("+").forEach(s => {
+    const base = s.replace(/[a-z]+$/i, "").slice(0, 4);
+    (COPRE_H[base] || COPRE_H[s] || []).forEach(c => coperte.add(c));
+  }));
+  return new Set([...hSet].filter(c => !coperte.has(c)));
+}
+
+/* Estrae ricorsivamente tutte le voci Information dal JSON di PUG View */
+function raccogliInfo(sez, out){
+  (sez.Information || []).forEach(i => out.push(i));
+  (sez.Section || []).forEach(s => raccogliInfo(s, out));
+  return out;
+}
+function stringheDi(info){
+  const v = info.Value || {};
+  return (v.StringWithMarkup || []).map(s => s.String || "");
+}
+
+async function importaDaPubChem(nome){
+  try{
+    setStato("Recupero la classificazione GHS di “" + esc(nome) + "” dal database globale…", false, true);
+
+    const rc = await fetch(PUBCHEM + "/pug/compound/name/" + encodeURIComponent(nome) + "/cids/JSON");
+    if(!rc.ok) throw new Error("notfound");
+    const cid = (await rc.json()).IdentifierList.CID[0];
+    stato.cid = cid;
+
+    const [rg, rcas, rtit] = await Promise.all([
+      fetch(PUBCHEM + "/pug_view/data/compound/" + cid + "/JSON?heading=GHS+Classification"),
+      fetch(PUBCHEM + "/pug/compound/cid/" + cid + "/xrefs/RN/JSON").catch(() => null),
+      fetch(PUBCHEM + "/pug/compound/cid/" + cid + "/property/Title/JSON").catch(() => null)
+    ]);
+    let titolo = "";
+    if(rtit && rtit.ok){
+      try{ titolo = (await rtit.json()).PropertyTable.Properties[0].Title || ""; }catch(e){}
+    }
+    if(titolo) nome = titolo;
+    if(!rg.ok){
+      const nb = nome === nome.toUpperCase() ? nome.charAt(0) + nome.slice(1).toLowerCase() : nome;
+      document.getElementById("inNome").value = nb.charAt(0).toUpperCase() + nb.slice(1);
+      setStato("“" + esc(nome) + "” trovata nel database globale (CID " + cid + ") ma <b>senza classificazione GHS registrata</b>: probabilmente non è classificata come pericolosa. Verifica comunque sulla SDS; puoi proseguire e selezionare manualmente eventuali pericoli.");
+      return;
+    }
+    const record = (await rg.json()).Record;
+    let info = raccogliInfo(record, []);
+
+    // Priorità alle fonti europee: 1) classificazione armonizzata CLP 1272/2008, 2) ECHA, 3) tutte
+    const riferimenti = record.Reference || [];
+    let fonte = "tutte le fonti aggregate";
+    const cerca = (re) => riferimenti.filter(r => re.test(r.SourceName || "")).map(r => r.ReferenceNumber);
+    let scelti = cerca(/1272\/2008/);
+    if(scelti.length) fonte = "classificazione armonizzata UE — Reg. (CE) 1272/2008 (CLP)";
+    else {
+      scelti = cerca(/European Chemicals|ECHA/i);
+      if(scelti.length) fonte = "ECHA — notifiche C&L";
+    }
+    const infoTutte = info;
+    if(scelti.length){
+      const set = new Set(scelti);
+      const filtrata = info.filter(i => set.has(i.ReferenceNumber));
+      if(filtrata.length) info = filtrata;
+    }
+    // frasi H segnalate dalle notifiche ECHA ma assenti dalla fonte scelta (es. H290 per NaOH)
+    const refEcha = new Set(cerca(/European Chemicals|ECHA/i));
+    const estraiH = (lista) => {
+      const s = new Set();
+      lista.filter(i => /Hazard Statements/.test(i.Name || "")).forEach(i => stringheDi(i).forEach(t => {
+        const m = t.match(/^((?:EU)?H\d{3}[A-Za-z]*(?:\+H\d{3}[A-Za-z]*)*)/);
+        if(m){ s.add(m[1]); if(!FRASI_H[m[1]]) FRASI_H[m[1]] = (t.replace(/^[^:]*:\s*/, "").replace(/\s*\[.*$/, "") || "—") + " [testo EN da PubChem]"; }
+      }));
+      return s;
+    };
+    const hEcha = estraiH(infoTutte.filter(i => refEcha.has(i.ReferenceNumber)));
+
+    // Pittogrammi
+    const picto = new Set();
+    info.filter(i => /^Pictogram/.test(i.Name || "")).forEach(i =>
+      ((i.Value || {}).StringWithMarkup || []).forEach(s =>
+        (s.Markup || []).forEach(m => {
+          const mm = ((m.Extra || "") + " " + (m.URL || "")).match(/GHS0\d/);
+          if(mm && PICTO[mm[0]]) picto.add(mm[0]);
+        })));
+    // regola di precedenza CLP (art. 26): se c'è il teschio (GHS06) il punto esclamativo (GHS07) non va usato
+    if(picto.has("GHS06")) picto.delete("GHS07");
+
+    // Avvertenza
+    let avv = "";
+    info.filter(i => i.Name === "Signal").forEach(i => stringheDi(i).forEach(s => {
+      if(/danger/i.test(s)) avv = "Pericolo";
+      else if(/warning/i.test(s) && avv !== "Pericolo") avv = "Attenzione";
+    }));
+
+    // Frasi H della fonte scelta (se un codice manca dal dizionario italiano, uso il testo inglese di PubChem)
+    let hSel = estraiH(info);
+    // le notifiche aggregate contengono spesso coppie ridondanti (es. H301+H302): tengo la più severa
+    const nHPrima = hSel.size;
+    hSel = filtraRidondanzeH(hSel);
+    const hRimosse = nHPrima - hSel.size;
+    const hExtra = [...filtraRidondanzeH(new Set([...hEcha, ...hSel]))].filter(c => !hSel.has(c)).sort();
+
+    // Frasi P — se le candidate sono più di 6, seleziono automaticamente le più rilevanti
+    let pTotali = new Set();
+    info.filter(i => /Precautionary Statement/.test(i.Name || "")).forEach(i => stringheDi(i).forEach(s =>
+      (s.match(/P\d{3}(?:\+P\d{3})*/g) || []).forEach(c => { if(FRASI_P[c]) pTotali.add(c); })));
+    const PRIORITA_P = ["P210","P280","P305+P351+P338","P305+P354+P338","P303+P361+P353","P302+P361+P354","P301+P310","P301+P330+P331","P301+P312","P304+P340","P316","P310","P260","P261","P273","P233","P240","P271","P403+P235","P403+P233","P331","P391","P405","P501"];
+    const rango = c => { const i = PRIORITA_P.indexOf(c); return i < 0 ? 99 : i; };
+    const nCandidate = pTotali.size;
+    const pSel = new Set([...pTotali].sort((a,b) => rango(a) - rango(b)).slice(0, 6));
+
+    // CAS
+    let cas = "";
+    if(rcas && rcas.ok){
+      try{
+        const rn = (await rcas.json()).InformationList.Information[0].RN || [];
+        // il CAS primario è di norma il più corto tra i validi (esclude EC e CAS deprecati)
+        cas = rn.filter(x => /^\d{2,7}-\d{2}-\d$/.test(x)).sort((a,b) => a.length - b.length || a.localeCompare(b))[0] || "";
+      }catch(e){}
+    }
+
+    if(!picto.size && !hSel.size){
+      setStato("“" + esc(nome) + "” trovata (CID " + cid + ") ma senza classificazione GHS registrata: potrebbe essere non pericolosa. Nome e CAS sono stati compilati; verifica sulla SDS.", false);
+    } else {
+      setStato("");
+    }
+
+    // nome leggibile: se il CAS è nell'archivio locale uso il nome italiano, altrimenti sistemo le maiuscole
+    let nomeBello = nome === nome.toUpperCase() ? nome.charAt(0) + nome.slice(1).toLowerCase() : nome;
+    nomeBello = nomeBello.charAt(0).toUpperCase() + nomeBello.slice(1);
+    const localePerCas = cas && PRESETS.find(p => p.cas === cas);
+    if(localePerCas)
+      nomeBello = (localePerCas.nome.toLowerCase().startsWith(nomeBello.toLowerCase()) || localePerCas.nome.includes("("))
+        ? localePerCas.nome
+        : localePerCas.nome + " (" + nomeBello + ")";
+    document.getElementById("inNome").value = nomeBello;
+    if(cas) document.getElementById("inCas").value = cas;
+    document.getElementById("inAvvertenza").value = avv;
+    stato.pictoSel = picto;
+    stato.hSel = hSel;
+    stato.pSel = pSel;
+    aggiornaPicto(); costruisciListaFrasi("H"); costruisciListaFrasi("P"); suggerisciP();
+
+    mostraFonte("🌐 Classificazione importata dal database globale <b>PubChem</b> (CID " + cid +
+      ") — fonte: <b>" + fonte + "</b> · pittogrammi: " + picto.size + " · frasi H: " + hSel.size +
+      " · frasi P: " + pSel.size +
+      (nCandidate > 6 ? " (selezionate automaticamente le 6 più rilevanti tra le " + nCandidate + " candidate: puoi modificarle qui sotto)" : "") +
+      (hRimosse > 0 ? " · " + hRimosse + " frasi H ridondanti escluse (tenuta la più severa di ogni coppia)" : "") +
+      ". Controlla e adatta alla concentrazione del tuo prodotto." +
+      (/notifiche/.test(fonte) ? "<br>ℹ️ Questa sostanza <b>non ha una classificazione armonizzata UE</b>: i dati sono l'aggregato delle notifiche dei fornitori (spesso più severo del necessario). Confronta con la SDS del tuo prodotto e deseleziona ciò che non si applica." : "") +
+      (hExtra.length ? "<br>⚠️ Le notifiche ECHA segnalano anche: <b>" + hExtra.join(", ") + "</b> — " +
+        hExtra.map(c => esc(FRASI_H[c] || "")).join(" · ") +
+        " <button class='nav' style='padding:4px 12px;font-size:.8rem;margin-left:6px' onclick='aggiungiHExtra()'>➕ aggiungi</button>" : ""));
+    document.getElementById("fonteBanner").dataset.hextra = hExtra.join(",");
+    vaiStep(2);
+  }catch(e){
+    setStato(e.message === "notfound"
+      ? "“" + esc(nome) + "” non trovata nel database globale: prova con il nome inglese o il numero CAS."
+      : "Impossibile recuperare la classificazione (connessione o dati mancanti). Usa l'archivio locale o compila manualmente.", true);
+  }
+}
+
+function mostraFonte(html){
+  const b = document.getElementById("fonteBanner");
+  b.style.display = "block";
+  b.innerHTML = html;
+}
+function aggiungiHExtra(){
+  const b = document.getElementById("fonteBanner");
+  const codici = (b.dataset.hextra || "").split(",").filter(Boolean);
+  if(!codici.length) return;
+  codici.forEach(c => stato.hSel.add(c));
+  b.dataset.hextra = "";
+  costruisciListaFrasi("H", document.getElementById("filtroH").value);
+  suggerisciP();
+  b.innerHTML += " <b>✓ aggiunte.</b>";
+}
+
+function applicaPreset(p){
+  stato.cid = null;
+  document.getElementById("inNome").value = p.nome;
+  document.getElementById("inCas").value = p.cas;
+  document.getElementById("inConc").value = p.conc;
+  document.getElementById("inAvvertenza").value = p.avv;
+  stato.pictoSel = new Set(p.picto);
+  stato.hSel = new Set(p.h.filter(c => FRASI_H[c]));
+  stato.pSel = new Set(p.p.filter(c => FRASI_P[c]));
+  aggiornaPicto(); costruisciListaFrasi("H"); costruisciListaFrasi("P"); suggerisciP();
+  mostraFonte("📗 Dati precompilati dall'<b>archivio locale</b> (classificazione tipica per " + esc(p.nome) + " " + esc(p.conc) + "). Verifica con la SDS del tuo fornitore.");
+  vaiStep(2);
+}
+
+function costruisciPicto(){
+  const g = document.getElementById("pictoGrid");
+  g.innerHTML = "";
+  Object.entries(PICTO).forEach(([cod, o]) => {
+    const c = document.createElement("div");
+    c.className = "picto-card"; c.dataset.cod = cod;
+    c.innerHTML = "<span class='picto-thumb'>" + o.svg + "</span><div class='pcod'>" + cod + "</div><div class='pnome'>" + o.nome + "</div>";
+    c.onclick = () => { stato.pictoSel.has(cod) ? stato.pictoSel.delete(cod) : stato.pictoSel.add(cod); aggiornaPicto(); };
+    g.appendChild(c);
+  });
+}
+function aggiornaPicto(){
+  document.querySelectorAll(".picto-card").forEach(c =>
+    c.classList.toggle("sel", stato.pictoSel.has(c.dataset.cod)));
+}
+
+function costruisciListaFrasi(tipo, filtro=""){
+  const dati = tipo === "H" ? FRASI_H : FRASI_P;
+  const sel  = tipo === "H" ? stato.hSel : stato.pSel;
+  const box  = document.getElementById("lista" + tipo);
+  const f = filtro.trim().toLowerCase();
+  box.innerHTML = "";
+  Object.entries(dati).forEach(([cod, testo]) => {
+    if(f && !(cod.toLowerCase().includes(f) || testo.toLowerCase().includes(f))) return;
+    const l = document.createElement("label");
+    const ck = document.createElement("input");
+    ck.type = "checkbox"; ck.checked = sel.has(cod);
+    ck.onchange = () => { ck.checked ? sel.add(cod) : sel.delete(cod); if(tipo==="H") suggerisciP(); };
+    l.appendChild(ck);
+    const sp = document.createElement("span");
+    sp.innerHTML = "<b>" + cod + "</b> — " + testo;
+    l.appendChild(sp);
+    box.appendChild(l);
+  });
+}
+
+/* Suggerimento frasi P in base alle H selezionate */
+const MAPPA_P = {
+  infiammabile:{test:c=>/^H2(2[0-8]|4|5)/.test(c), p:["P210","P233","P403+P235"], msg:"prodotto infiammabile → considera P210, P233, P403+P235"},
+  corrosivo:{test:c=>c==="H314"||c==="H318", p:["P280","P305+P351+P338","P310"], msg:"corrosivo/lesioni oculari → considera P280, P305+P351+P338, P310"},
+  tossico:{test:c=>/^H3(00|01|10|11|30|31)/.test(c), p:["P260","P280","P301+P310","P304+P340"], msg:"tossicità acuta → considera P260, P280, P301+P310, P304+P340"},
+  cmr:{test:c=>/^H3(4|5|6)\d/.test(c)||c==="H350"||c==="H350i", p:["P201","P280","P308+P313"], msg:"CMR (cancerogeno/mutageno/reprotossico) → considera P201, P280, P308+P313"},
+  ambiente:{test:c=>/^H4/.test(c), p:["P273","P391","P501"], msg:"pericoloso per l'ambiente → considera P273, P391, P501"}
+};
+function suggerisciP(){
+  const div = document.getElementById("consiglioP");
+  const msgs = [], codici = new Set();
+  Object.values(MAPPA_P).forEach(m => {
+    if([...stato.hSel].some(m.test)){
+      msgs.push(m.msg);
+      m.p.forEach(c => { if(FRASI_P[c] && !stato.pSel.has(c)) codici.add(c); });
+    }
+  });
+  if(msgs.length){
+    div.style.display = "block";
+    div.innerHTML = "<b>💡 Suggerimento:</b> in base alle frasi H selezionate — " + msgs.join("; ") +
+      ". <i>(Il CLP raccomanda di non superare 6 frasi P salvo necessità.)</i>" +
+      (codici.size ? "<br><button class='nav' style='margin-top:8px;padding:6px 14px;font-size:.85rem' onclick='applicaSuggerimentiP()'>➕ Aggiungi automaticamente " + codici.size + " frasi P suggerite</button>" : "");
+    div.dataset.codici = [...codici].join(",");
+  } else div.style.display = "none";
+}
+function applicaSuggerimentiP(){
+  const div = document.getElementById("consiglioP");
+  (div.dataset.codici || "").split(",").filter(Boolean).forEach(c => stato.pSel.add(c));
+  costruisciListaFrasi("P", document.getElementById("filtroP").value);
+  suggerisciP();
+}
+
+/* ============================================================
+   CONTENITORE / DIMENSIONI
+   ============================================================ */
+function capacitaLitri(){
+  const v = Math.max(0, parseFloat(document.getElementById("inCapacita").value) || 0);
+  const u = document.getElementById("inUnita").value;
+  if(u === "ml" || u === "g") return v / 1000;   // per i solidi si usa il peso come stima
+  return v;
+}
+function classeDim(){
+  const l = capacitaLitri();
+  if(l <= 3) return 0;
+  if(l <= 50) return 1;
+  if(l <= 500) return 2;
+  return 3;
+}
+const DIMENSIONI = [[74,52],[105,74],[148,105],[210,148]]; // [larghezza, altezza] mm
+
+function aggiornaContenitore(){
+  const k = classeDim();
+  document.querySelectorAll("#tabDim tr[data-k]").forEach(r =>
+    r.classList.toggle("evid", +r.dataset.k === k));
+
+  const tipo = document.getElementById("inTipoCont").value;
+  const litri = capacitaLitri();
+  const note = [];
+
+  if(litri > 0 && litri <= 0.125)
+    note.push("Contenitore ≤ 125 ml: per alcune classi di pericolo il CLP (All. I, punto 1.5.2) consente di <b>omettere le frasi H e P</b> dall'etichetta, mantenendo pittogrammi, avvertenza e identificatore. Puoi disattivare i testi delle frasi allo step 4.");
+  if(tipo === "vial" || tipo === "falcon")
+    note.push("Provette/vial: se l'etichetta regolamentare non entra sul contenitore, applicala sull'imballaggio esterno (rack, scatola) e usa sul contenitore un'etichetta ridotta (nome + pittogrammi) — è disponibile il formato mini 38 × 60 mm. Per le Falcon l'etichetta va sul corpo, non sul tappo, e non deve coprire la scala graduata.");
+  if(tipo === "eppendorf")
+    note.push("Microprovette Eppendorf: lo spazio è insufficiente per un'etichetta CLP — usa il formato mini 38 × 60 mm applicato a bandierina, o un codice/nome sul tappo con etichetta CLP completa sul rack o sulla scatola di conservazione.");
+  if(tipo === "bottiglia")
+    note.push("Bottiglie: applica l'etichetta sul corpo del contenitore, leggibile orizzontalmente quando il contenitore è in posizione normale, mai sul tappo.");
+  if(tipo === "becher")
+    note.push("Becher, beute e matracci sono vetreria da lavoro, non da conservazione: se la sostanza vi rimane oltre la manipolazione immediata serve almeno un'etichetta con nome e pittogrammi (il formato mini va bene). A fine giornata travasa in un contenitore chiudibile con etichetta completa.");
+  if(tipo === "barattolo")
+    note.push("Barattoli per solidi: applica l'etichetta sul corpo, non sul coperchio (i coperchi si scambiano facilmente); per i solidi indica il peso come quantità nominale.");
+  if(tipo === "tanica" || tipo === "fusto")
+    note.push("Taniche e fusti: etichetta sul fianco, ben visibile con il contenitore in posizione di stoccaggio; per trasporto su strada valgono in aggiunta le norme ADR.");
+  if(tipo === "bombola")
+    note.push("Bombole gas: ricordati il pittogramma GHS04 (gas sotto pressione) se pertinente; l'etichetta può essere applicata sull'ogiva (norme specifiche: CLP All. I, punto 1.3.1).");
+  if(tipo === "sacco")
+    note.push("Sacchi: applica l'etichetta sulla superficie piana più ampia; se il contenuto è travasato in altri contenitori, ciascuno va rietichettato.");
+  if(tipo === "spruzzetta")
+    note.push("Spruzzette e contenitori di travaso/uso quotidiano: devono comunque riportare almeno nome della sostanza e pittogrammi di pericolo (etichettatura semplificata per uso interno di breve durata).");
+  if(tipo === "altro")
+    note.push("Regola generale: l'etichetta va sul corpo del contenitore, leggibile con il contenitore in posizione normale; se lo spazio non basta, etichetta completa sull'imballaggio esterno ed etichetta ridotta (nome + pittogrammi) sul contenitore.");
+
+  document.getElementById("noteContenitore").innerHTML =
+    "<b>Indicazioni per questo contenitore:</b><ul style='margin:6px 0 0 18px'>" +
+    note.map(n => "<li style='margin-bottom:4px'>" + n + "</li>").join("") + "</ul>";
+}
+
+function dimensioniEtichetta(){
+  const f = document.getElementById("inFormato").value;
+  if(f === "auto") return DIMENSIONI[classeDim()];
+  const [a, b] = f.split("x").map(Number);
+  return [b, a]; // il select è "altezza x larghezza" → restituisco [larg, alt]
+}
+
+/* ============================================================
+   QR CODE — generatore nativo (byte mode, ECC L, mask 0, v1–v5)
+   ============================================================ */
+const QR_CAP = [0,17,32,53,78,106];   // capacità in byte per versione (ECC L)
+const QR_EC  = [0,7,10,15,20,26];     // codeword di correzione errori
+const QR_TOT = [0,26,44,70,100,134];  // codeword totali
+
+function qrMatrix(testo){
+  let dati = Array.from(new TextEncoder().encode(testo));
+  let v = QR_CAP.findIndex(c => dati.length <= c);
+  if(v < 1){ v = 5; dati = dati.slice(0, QR_CAP[5]); }
+  const nData = QR_TOT[v] - QR_EC[v];
+
+  // bitstream: modo byte (0100) + conteggio (8 bit) + dati + terminatore + padding
+  const bits = [];
+  const push = (val, n) => { for(let i = n-1; i >= 0; i--) bits.push((val >> i) & 1); };
+  push(4, 4); push(dati.length, 8);
+  dati.forEach(b => push(b, 8));
+  push(0, Math.min(4, nData * 8 - bits.length));
+  while(bits.length % 8) bits.push(0);
+  const cw = [];
+  for(let i = 0; i < bits.length; i += 8){ let b = 0; for(let j = 0; j < 8; j++) b = (b << 1) | bits[i+j]; cw.push(b); }
+  const pad = [236, 17]; let pi = 0;
+  while(cw.length < nData) cw.push(pad[pi++ % 2]);
+
+  // Reed-Solomon su GF(256)
+  const EXP = new Array(512), LOG = new Array(256);
+  for(let i = 0, x = 1; i < 255; i++){ EXP[i] = x; LOG[x] = i; x <<= 1; if(x & 256) x ^= 0x11d; }
+  for(let i = 255; i < 512; i++) EXP[i] = EXP[i-255];
+  const mul = (a, b) => (a && b) ? EXP[LOG[a] + LOG[b]] : 0;
+  let gen = [1];
+  for(let i = 0; i < QR_EC[v]; i++){
+    const np = new Array(gen.length + 1).fill(0);
+    for(let j = 0; j < gen.length; j++){ np[j] ^= gen[j]; np[j+1] ^= mul(gen[j], EXP[i]); }
+    gen = np;
+  }
+  const msg = cw.concat(new Array(QR_EC[v]).fill(0));
+  for(let i = 0; i < cw.length; i++){
+    const c = msg[i];
+    if(c) for(let j = 0; j < gen.length; j++) msg[i+j] ^= mul(gen[j], c);
+  }
+  const finali = cw.concat(msg.slice(cw.length));
+
+  // matrice: pattern funzionali
+  const size = 17 + 4 * v;
+  const M = Array.from({length: size}, () => new Array(size).fill(null));
+  function finder(r, c){
+    for(let dr = -1; dr <= 7; dr++) for(let dc = -1; dc <= 7; dc++){
+      const rr = r + dr, cc = c + dc;
+      if(rr < 0 || rr >= size || cc < 0 || cc >= size) continue;
+      const dentro = dr >= 0 && dr <= 6 && dc >= 0 && dc <= 6;
+      M[rr][cc] = dentro && (dr === 0 || dr === 6 || dc === 0 || dc === 6 || (dr >= 2 && dr <= 4 && dc >= 2 && dc <= 4));
+    }
+  }
+  finder(0, 0); finder(0, size - 7); finder(size - 7, 0);
+  for(let i = 8; i < size - 8; i++){ M[6][i] = i % 2 === 0; M[i][6] = i % 2 === 0; }
+  if(v >= 2){
+    const p = 4 * v + 10;
+    for(let dr = -2; dr <= 2; dr++) for(let dc = -2; dc <= 2; dc++)
+      M[p+dr][p+dc] = Math.max(Math.abs(dr), Math.abs(dc)) !== 1;
+  }
+  M[4*v + 9][8] = true; // modulo scuro
+  for(let i = 0; i < 9; i++){ if(M[8][i] === null) M[8][i] = false; if(M[i][8] === null) M[i][8] = false; }
+  for(let i = size - 8; i < size; i++){ if(M[8][i] === null) M[8][i] = false; if(M[i][8] === null) M[i][8] = false; }
+
+  // dati a zigzag con mask 0 ((r+c) % 2 === 0)
+  const flusso = [];
+  finali.forEach(b => { for(let i = 7; i >= 0; i--) flusso.push((b >> i) & 1); });
+  let bi = 0, salita = true;
+  for(let col = size - 1; col > 0; col -= 2){
+    if(col === 6) col--;
+    for(let k = 0; k < size; k++){
+      const r = salita ? size - 1 - k : k;
+      for(const c of [col, col - 1]){
+        if(M[r][c] === null){
+          const bit = bi < flusso.length ? flusso[bi] : 0; bi++;
+          M[r][c] = (bit ^ ((r + c) % 2 === 0 ? 1 : 0)) === 1;
+        }
+      }
+    }
+    salita = !salita;
+  }
+
+  // informazione di formato (ECC L, mask 0) con BCH(15,5)
+  const fdata = (0b01 << 3) | 0;
+  let fd = fdata << 10;
+  const G = 0b10100110111;
+  for(let i = 14; i >= 10; i--) if((fd >> i) & 1) fd ^= G << (i - 10);
+  const F = ((fdata << 10) | fd) ^ 0b101010000010010;
+  const fb = []; for(let i = 14; i >= 0; i--) fb.push((F >> i) & 1);
+  const posA = [[8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],[8,8],[7,8],[5,8],[4,8],[3,8],[2,8],[1,8],[0,8]];
+  posA.forEach((p, i) => M[p[0]][p[1]] = fb[i] === 1);
+  for(let i = 0; i < 7; i++) M[size-1-i][8] = fb[i] === 1;
+  for(let i = 0; i < 8; i++) M[8][size-8+i] = fb[7+i] === 1;
+  return M;
+}
+
+function qrSVG(testo, mm){
+  try{
+    const M = qrMatrix(String(testo));
+    const n = M.length, q = 2;
+    let r = "";
+    for(let i = 0; i < n; i++) for(let j = 0; j < n; j++)
+      if(M[i][j]) r += '<rect x="' + (j+q) + '" y="' + (i+q) + '" width="1" height="1"/>';
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + (n+2*q) + ' ' + (n+2*q) +
+      '" width="' + mm + 'mm" height="' + mm + 'mm" shape-rendering="crispEdges">' +
+      '<rect width="100%" height="100%" fill="#fff"/><g fill="#000">' + r + '</g></svg>';
+  }catch(e){ return ""; }
+}
+
+/* ============================================================
+   ANTEPRIMA / ETICHETTA
+   ============================================================ */
+function val(id){ return document.getElementById(id).value.trim(); }
+
+function htmlEtichetta(largMm, altMm, fontPt){
+  const nome = val("inNome") || "—";
+  const cas = val("inCas"), conc = val("inConc");
+  const avv = document.getElementById("inAvvertenza").value;
+  const testiH = document.getElementById("ckTestiH").checked;
+  const testiP = document.getElementById("ckTestiP").checked;
+  const meta = document.getElementById("ckMeta").checked;
+
+  // Dimensione pittogramma: ≥ 1/15 dell'area etichetta, min 1 cm² (lato min 10 mm)
+  const areaPitto = Math.max((largMm * altMm) / 15, 100);
+  const latoPitto = Math.max(Math.sqrt(areaPitto), 10);
+
+  const ordina = a => [...a].sort();
+  const hSel = ordina(stato.hSel), pSel = ordina(stato.pSel);
+
+  let h = "";
+  h += '<div class="et-nome" style="font-size:' + (fontPt * 1.5) + 'pt">' + esc(nome) + '</div>';
+  if(cas || conc) h += '<div class="et-cas" style="font-size:' + fontPt + 'pt">' +
+      (cas ? "CAS " + esc(cas) : "") + (cas && conc ? " · " : "") + esc(conc) + '</div>';
+
+  if(stato.pictoSel.size){
+    h += '<div class="et-pitto">';
+    ordina(stato.pictoSel).forEach(c => {
+      h += '<span style="width:' + latoPitto + 'mm;height:' + latoPitto + 'mm;display:inline-block">' + PICTO[c].svg + '</span>';
+    });
+    h += '</div>';
+  }
+  if(avv) h += '<div class="et-avvertenza" style="font-size:' + (fontPt * 1.3) + 'pt">' + avv + '</div>';
+
+  if(hSel.length){
+    h += '<div class="et-frasi" style="font-size:' + fontPt + 'pt">';
+    hSel.forEach(c => { h += "<p><b>" + c + "</b>" + (testiH ? " " + esc(FRASI_H[c]) : "") + "</p>"; });
+    h += '</div>';
+  }
+  if(pSel.length){
+    h += '<div class="et-frasi" style="font-size:' + (fontPt * 0.9) + 'pt">';
+    pSel.forEach(c => { h += "<p><b>" + c + "</b>" + (testiP ? " " + esc(FRASI_P[c]) : "") + "</p>"; });
+    h += '</div>';
+  }
+
+  const forn = val("inFornitore");
+  const cap = val("inCapacita"), un = document.getElementById("inUnita").value;
+  const dataIt = id => val(id) ? val(id).split("-").reverse().join("/") : "";
+  let piede = "";
+  if(forn) piede += esc(forn).replace(/\n/g, "<br>") + "<br>";
+  const metaBits = [];
+  if(cap) metaBits.push("Quantità: " + esc(cap) + " " + (un === "l" ? "L" : un));
+  if(meta){
+    if(val("inData")) metaBits.push("Data: " + dataIt("inData"));
+    if(val("inApertura")) metaBits.push("Apert.: " + dataIt("inApertura"));
+    if(val("inScadenza")) metaBits.push("Scad.: " + dataIt("inScadenza"));
+    if(val("inOperatore")) metaBits.push("Op.: " + esc(val("inOperatore")));
+    if(val("inLotto")) metaBits.push("Lotto: " + esc(val("inLotto")));
+    if(val("inLab")) metaBits.push("Lab: " + esc(val("inLab")));
+  }
+  if(metaBits.length) piede += '<span class="et-meta">' + metaBits.map(esc0).join(" · ") + '</span>';
+
+  let qrHtml = "";
+  if(document.getElementById("ckQR").checked){
+    const modo = document.getElementById("inQrModo").value;
+    let testoQR = "";
+    if(modo === "pubchem"){
+      if(stato.cid) testoQR = "https://pubchem.ncbi.nlm.nih.gov/compound/" + stato.cid + "#section=Safety-and-Hazards";
+      else if(cas) testoQR = "https://pubchem.ncbi.nlm.nih.gov/#query=" + encodeURIComponent(cas);
+    } else if(modo === "sds"){
+      if(cas) testoQR = "https://www.google.com/search?q=" + encodeURIComponent('"' + cas + '" SDS filetype:pdf');
+    } else if(modo === "link"){
+      testoQR = val("inQrTesto");
+    }
+    if(!testoQR) // modalità "dati" o fallback se manca il CAS/link
+      testoQR = [val("inNome"), cas && "CAS " + cas, val("inLotto") && "Lotto " + val("inLotto"), dataIt("inData"), val("inLab")]
+        .filter(Boolean).join(" | ");
+    if(testoQR){
+      const lato = Math.max(10, Math.min(15, altMm * 0.24));
+      qrHtml = '<span style="flex:0 0 auto; line-height:0">' + qrSVG(testoQR, lato) + '</span>';
+    }
+  }
+  if(piede || qrHtml)
+    h += '<div class="et-fornitore" style="font-size:' + (fontPt * 0.85) + 'pt;margin-top:auto;display:flex;gap:2mm;justify-content:space-between;align-items:flex-end"><span>' + piede + '</span>' + qrHtml + '</div>';
+
+  return '<div class="etichetta" style="width:' + largMm + 'mm;min-height:' + altMm + 'mm">' + h + '</div>';
+}
+function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function esc0(s){ return s; } // già escapato a monte
+
+let _pxMm = null;
+function pxMm(){
+  if(!_pxMm){
+    const d = document.createElement("div");
+    d.style.cssText = "width:100mm;position:absolute;visibility:hidden";
+    document.body.appendChild(d); _pxMm = d.offsetWidth / 100; d.remove();
+  }
+  return _pxMm;
+}
+
+function aggiornaAnteprima(){
+  const [larg, alt] = dimensioniEtichetta();
+  const fontPt = parseFloat(document.getElementById("inFont").value);
+  document.getElementById("anteprimaWrap").innerHTML = htmlEtichetta(larg, alt, fontPt);
+
+  // controlli di completezza
+  const avvisi = [];
+
+  // sforamento: il contenuto supera l'altezza nominale dell'etichetta?
+  const et = document.querySelector("#anteprimaWrap .etichetta");
+  if(et){
+    const altReale = Math.round(et.offsetHeight / pxMm());
+    if(altReale > alt * 1.15)
+      avvisi.push("il contenuto <b>sfora il formato scelto</b>: l'etichetta stampata sarà alta ~" + altReale +
+        " mm invece dei " + alt + " mm nominali. Riduci il testo, scegli un formato più grande, oppure " +
+        "<button class='nav' style='padding:4px 12px;font-size:.8rem' onclick='adattaAuto()'>🔧 adatta automaticamente</button>");
+  }
+  if(!val("inNome")) avvisi.push("manca il <b>nome della sostanza</b> (obbligatorio)");
+  if(stato.pictoSel.size && !document.getElementById("inAvvertenza").value)
+    avvisi.push("hai selezionato pittogrammi ma nessuna <b>avvertenza</b> (Pericolo/Attenzione)");
+  if(stato.pictoSel.size && !stato.hSel.size)
+    avvisi.push("hai selezionato pittogrammi ma nessuna <b>frase H</b>");
+  if(stato.hSel.size && !stato.pSel.size)
+    avvisi.push("nessuna <b>frase P</b> selezionata: per un'etichetta CLP completa servono i consigli di prudenza");
+  if(!val("inFornitore"))
+    avvisi.push("manca il <b>fornitore/laboratorio</b>: su un'etichetta CLP completa è obbligatorio");
+  if(stato.pSel.size > 6)
+    avvisi.push("hai selezionato più di 6 frasi P: il CLP raccomanda di limitarsi alle 6 più pertinenti");
+  if(stato.hSel.has("EUH019") && !val("inApertura"))
+    avvisi.push("sostanza che può formare <b>perossidi esplosivi</b> (EUH019): indica la <b>data di apertura</b> allo step 1 e ritesta/smaltisci secondo le regole interne (tipicamente 6–12 mesi dall'apertura)");
+  if(val("inScadenza") && val("inData") && val("inScadenza") < val("inData"))
+    avvisi.push("la <b>scadenza</b> indicata è precedente alla data di preparazione: controlla le date");
+  if(document.getElementById("ckQR").checked && document.getElementById("inQrModo").value === "link"){
+    const nByte = new TextEncoder().encode(val("inQrTesto")).length;
+    if(nByte > 106)
+      avvisi.push("il testo del QR personalizzato è di " + nByte + " byte ma il massimo è 106: verrà <b>troncato</b> e un link troncato non funziona — accorcia l'URL (es. con un servizio di short-link interno)");
+  }
+
+  const div = document.getElementById("avvisiEtichetta");
+  const nonPericolosa = !stato.pictoSel.size && !stato.hSel.size;
+  div.innerHTML = avvisi.length
+    ? '<div class="avviso">⚠️ <b>Controlli:</b><ul style="margin:6px 0 0 18px">' + avvisi.map(a => "<li>" + a + "</li>").join("") + "</ul></div>"
+    : (nonPericolosa
+      ? '<div class="avviso verde">✅ Sostanza senza classificazione di pericolo selezionata: etichetta di sola identificazione e tracciabilità (nome, quantità, data, operatore, laboratorio). Verifica sulla SDS che non sia effettivamente classificata.</div>'
+      : '<div class="avviso verde">✅ L\'etichetta contiene tutti gli elementi principali richiesti dal CLP (art. 17): identificatore, pittogrammi, avvertenza, frasi H, frasi P e fornitore.</div>');
+}
+
+/* Adattamento automatico: riduce il font, poi i testi P e H, finché il contenuto entra nel formato */
+function adattaAuto(){
+  const slider = document.getElementById("inFont");
+  const selFmt = document.getElementById("inFormato");
+  const ORDINE_FMT = ["38x60","52x74","74x105","105x148","148x210"];
+  const sborda = () => {
+    const [, altNom] = dimensioniEtichetta();
+    const et = document.querySelector("#anteprimaWrap .etichetta");
+    return et && et.offsetHeight / pxMm() > altNom * 1.15;
+  };
+  const render = () => {
+    document.getElementById("anteprimaWrap").innerHTML =
+      htmlEtichetta(...dimensioniEtichetta(), parseFloat(slider.value));
+  };
+  let tentativi = 0;
+  while(sborda() && tentativi++ < 40){
+    if(parseFloat(slider.value) > 5.5){ slider.value = parseFloat(slider.value) - 0.5; }
+    else if(document.getElementById("ckTestiP").checked){ document.getElementById("ckTestiP").checked = false; }
+    else if(document.getElementById("ckTestiH").checked){ document.getElementById("ckTestiH").checked = false; }
+    else {
+      // ultima risorsa: passa al formato di etichetta superiore
+      const [larg, alt] = dimensioniEtichetta();
+      const attuale = selFmt.value === "auto" ? alt + "x" + larg : selFmt.value;
+      const i = ORDINE_FMT.indexOf(attuale);
+      if(i < 0 || i >= ORDINE_FMT.length - 1) break;
+      selFmt.value = ORDINE_FMT[i + 1];
+    }
+    render();
+  }
+  // recupero: se ora c'è spazio, riattiva testi e font ridotti in precedenza
+  const prova = (applica, annulla) => { applica(); render(); if(sborda()){ annulla(); render(); } };
+  const ckH = document.getElementById("ckTestiH"), ckP = document.getElementById("ckTestiP");
+  if(!ckH.checked) prova(() => ckH.checked = true, () => ckH.checked = false);
+  if(!ckP.checked) prova(() => ckP.checked = true, () => ckP.checked = false);
+  for(let t = 0; t < 10 && parseFloat(slider.value) < 8; t++){
+    const v = parseFloat(slider.value);
+    prova(() => slider.value = v + 0.5, () => slider.value = v);
+    if(parseFloat(slider.value) === v) break;
+  }
+  aggiornaAnteprima();
+}
+
+/* ============================================================
+   STAMPA, CODA DI STAMPA, ETICHETTE RECENTI
+   ============================================================ */
+function copieCorrenti(){
+  return Math.max(1, Math.min(40, parseInt(document.getElementById("inCopie").value) || 1));
+}
+function etichettaCorrente(){
+  const [larg, alt] = dimensioniEtichetta();
+  const fontPt = parseFloat(document.getElementById("inFont").value);
+  return { html: htmlEtichetta(larg, alt, fontPt), copie: copieCorrenti(),
+           nome: val("inNome") || "—", dim: larg + " × " + alt + " mm" };
+}
+
+let CODA = [];
+function aggiungiCoda(){
+  CODA.push(etichettaCorrente());
+  salvaRecente();
+  aggiornaCoda();
+}
+function rimuoviCoda(i){ CODA.splice(i, 1); aggiornaCoda(); }
+function aggiornaCoda(){
+  const wrap = document.getElementById("codaWrap");
+  const lista = document.getElementById("listaCoda");
+  wrap.style.display = CODA.length ? "block" : "none";
+  lista.innerHTML = CODA.map((c, i) =>
+    '<div class="coda-item"><span><b>' + esc(c.nome) + '</b> — ' + c.dim + ' × ' + c.copie +
+    ' copie</span><button title="Rimuovi" onclick="rimuoviCoda(' + i + ')">✕</button></div>').join("");
+  document.getElementById("btnStampa").textContent =
+    CODA.length ? "🖨️ Stampa coda (" + CODA.length + " etichette + questa)" : "🖨️ Stampa etichette";
+}
+function stampaTutto(){
+  const items = CODA.concat([etichettaCorrente()]);
+  salvaRecente();
+  const pa = document.getElementById("printArea");
+  pa.innerHTML = items.map(c => Array.from({length: c.copie}, () => c.html).join("")).join("");
+  window.print();
+}
+
+/* --- etichette recenti (localStorage) --- */
+const CAMPI_STATO = ["inNome","inCas","inConc","inFornitore","inData","inOperatore","inLotto","inLab","inApertura","inScadenza","inAvvertenza","inTipoCont","inCapacita","inUnita","inFormato","inCopie","inQrModo","inQrTesto"];
+function salvaRecente(){
+  try{
+    const voce = { t: Date.now(), campi: {}, picto: [...stato.pictoSel], h: [...stato.hSel], p: [...stato.pSel], qr: document.getElementById("ckQR").checked, cid: stato.cid };
+    CAMPI_STATO.forEach(id => voce.campi[id] = document.getElementById(id).value);
+    if(!voce.campi.inNome.trim()) return;
+    let rec = JSON.parse(localStorage.getItem("ghs-recenti") || "[]");
+    rec = rec.filter(r => !(r.campi.inNome === voce.campi.inNome && r.campi.inConc === voce.campi.inConc));
+    rec.unshift(voce);
+    localStorage.setItem("ghs-recenti", JSON.stringify(rec.slice(0, 12)));
+    mostraRecenti();
+  }catch(e){}
+}
+function mostraRecenti(){
+  try{
+    const rec = JSON.parse(localStorage.getItem("ghs-recenti") || "[]");
+    const wrap = document.getElementById("recentiWrap");
+    wrap.style.display = rec.length ? "block" : "none";
+    const box = document.getElementById("listaRecenti");
+    box.innerHTML = "";
+    rec.forEach((r, i) => {
+      const d = document.createElement("div");
+      const quando = new Date(r.t).toLocaleDateString("it-IT");
+      d.innerHTML = "<span><b>" + esc(r.campi.inNome) + "</b> <span class='cas'>" +
+        (r.campi.inCas ? "CAS " + esc(r.campi.inCas) + " · " : "") + quando + "</span></span>" +
+        "<span><button class='riga-x' title='Elimina' data-del='" + i + "'>✕</button></span>";
+      d.onclick = (ev) => {
+        if(ev.target.dataset.del !== undefined){ eliminaRecente(+ev.target.dataset.del); return; }
+        caricaRecente(i);
+      };
+      box.appendChild(d);
+    });
+  }catch(e){}
+}
+function eliminaRecente(i){
+  try{
+    const rec = JSON.parse(localStorage.getItem("ghs-recenti") || "[]");
+    rec.splice(i, 1);
+    localStorage.setItem("ghs-recenti", JSON.stringify(rec));
+    mostraRecenti();
+  }catch(e){}
+}
+function caricaRecente(i){
+  try{
+    const r = JSON.parse(localStorage.getItem("ghs-recenti") || "[]")[i];
+    if(!r) return;
+    CAMPI_STATO.forEach(id => { if(r.campi[id] !== undefined) document.getElementById(id).value = r.campi[id]; });
+    document.getElementById("ckQR").checked = !!r.qr;
+    stato.pictoSel = new Set(r.picto); stato.hSel = new Set(r.h); stato.pSel = new Set(r.p);
+    stato.cid = r.cid || null;
+    aggiornaPicto(); costruisciListaFrasi("H"); costruisciListaFrasi("P"); suggerisciP();
+    mostraFonte("🕘 Etichetta caricata dalle <b>recenti</b> (" + esc(r.campi.inNome) + "). Verifica che i dati siano ancora attuali.");
+    vaiStep(4);
+  }catch(e){}
+}
+
+/* ============================================================
+   NAVIGAZIONE
+   ============================================================ */
+function vaiStep(n){
+  stepCorrente = n;
+  document.querySelectorAll(".step").forEach((s, i) =>
+    s.classList.toggle("visible", i + 1 === n));
+  document.querySelectorAll("#stepper button").forEach((b, i) => {
+    b.classList.toggle("active", i + 1 === n);
+    b.classList.toggle("done", i + 1 < n);
+  });
+  if(n === 3) aggiornaContenitore();
+  if(n === 4) aggiornaAnteprima();
+  window.scrollTo({top: 0, behavior: "smooth"});
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+const campoRicerca = document.getElementById("cercaGlobale");
+campoRicerca.addEventListener("input", e => cercaTutto(e.target.value));
+campoRicerca.addEventListener("keydown", e => {
+  if(e.key === "Enter" && campoRicerca.value.trim().length >= 3){
+    e.preventDefault();
+    const q = campoRicerca.value.trim();
+    importaDaPubChem(traduci(q) || q);
+  }
+});
+document.getElementById("filtroH").addEventListener("input", e => costruisciListaFrasi("H", e.target.value));
+document.getElementById("filtroP").addEventListener("input", e => costruisciListaFrasi("P", e.target.value));
+["inCapacita","inUnita","inTipoCont"].forEach(id =>
+  document.getElementById(id).addEventListener("input", aggiornaContenitore));
+
+// Capacità e formato suggeriti quando si sceglie il tipo di contenitore
+const DEFAULT_CONT = {
+  falcon:{cap:50, un:"ml", fmt:"38x60"},
+  eppendorf:{cap:2, un:"ml", fmt:"38x60"},
+  vial:{cap:20, un:"ml", fmt:"38x60"},
+  becher:{cap:250, un:"ml", fmt:"52x74"},
+  spruzzetta:{cap:500, un:"ml", fmt:"52x74"},
+  bottiglia:{cap:1, un:"l", fmt:"auto"},
+  barattolo:{cap:500, un:"g", fmt:"auto"},
+  tanica:{cap:25, un:"l", fmt:"auto"},
+  fusto:{cap:200, un:"l", fmt:"auto"},
+  sacco:{cap:25, un:"kg", fmt:"auto"},
+  bombola:{cap:50, un:"l", fmt:"auto"}
+};
+document.getElementById("inTipoCont").addEventListener("change", e => {
+  const d = DEFAULT_CONT[e.target.value];
+  if(!d) return;
+  document.getElementById("inCapacita").value = d.cap;
+  document.getElementById("inUnita").value = d.un;
+  document.getElementById("inFormato").value = d.fmt;
+  aggiornaContenitore();
+});
+["inFont","ckTestiH","ckTestiP","ckMeta","inFormato","ckQR","inQrModo","inQrTesto"].forEach(id =>
+  document.getElementById(id).addEventListener("input", aggiornaAnteprima));
+document.getElementById("inData").value = new Date().toISOString().slice(0,10);
+document.querySelectorAll("#stepper button").forEach(b =>
+  b.addEventListener("click", () => vaiStep(+b.dataset.step)));
+
+costruisciPreset();
+costruisciPicto();
+costruisciListaFrasi("H");
+costruisciListaFrasi("P");
+mostraRecenti();
+vaiStep(1);
+campoRicerca.focus();
+</script>
+</body>
+</html>
