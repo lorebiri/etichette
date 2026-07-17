@@ -10,7 +10,8 @@
     --testo:#22272e; --ok:#2a7d4f;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
-  body{font-family:"Segoe UI", system-ui, -apple-system, Arial, sans-serif; color:var(--testo); background:var(--grigio); line-height:1.45;}
+  html{font-size:17px;}
+  body{font-family:"Segoe UI", system-ui, -apple-system, Arial, sans-serif; color:var(--testo); background:var(--grigio); line-height:1.5;}
   header{background:var(--blu); color:#fff; padding:18px 24px;}
   header h1{font-size:1.35rem; font-weight:600;}
   header p{opacity:.85; font-size:.9rem; margin-top:2px;}
@@ -25,12 +26,12 @@
   .stepper button.done .num{background:var(--ok); color:#fff;}
 
   .card{background:#fff; border:1px solid var(--bordo); border-radius:10px; padding:22px; margin-bottom:18px;}
-  .card h2{font-size:1.1rem; margin-bottom:4px; color:var(--blu);}
-  .card .hint{font-size:.87rem; color:#5a6472; margin-bottom:16px;}
+  .card h2{font-size:1.15rem; margin-bottom:4px; color:var(--blu);}
+  .card .hint{font-size:.93rem; color:#4a5462; margin-bottom:16px;}
   .step{display:none;}
   .step.visible{display:block;}
 
-  label.fld{display:block; font-size:.85rem; font-weight:600; margin:12px 0 4px;}
+  label.fld{display:block; font-size:.93rem; font-weight:600; margin:12px 0 4px;}
   input[type=text], input[type=number], input[type=date], select, textarea{
     width:100%; padding:8px 10px; border:1px solid var(--bordo); border-radius:6px; font-size:.95rem; background:#fff;}
   .row{display:flex; gap:14px; flex-wrap:wrap;}
@@ -66,7 +67,7 @@
 
   /* liste frasi */
   .phrase-box{border:1px solid var(--bordo); border-radius:8px; max-height:280px; overflow-y:auto; margin-top:6px;}
-  .phrase-box label{display:flex; gap:8px; padding:7px 10px; font-size:.85rem; border-bottom:1px solid #eef0f3; cursor:pointer; align-items:flex-start;}
+  .phrase-box label{display:flex; gap:8px; padding:8px 10px; font-size:.9rem; border-bottom:1px solid #eef0f3; cursor:pointer; align-items:flex-start;}
   .phrase-box label:hover{background:#f7f9fc;}
   .phrase-box input{margin-top:3px;}
   .phrase-box b{white-space:nowrap;}
@@ -132,10 +133,13 @@
   <section class="step" id="step1">
     <div class="card">
       <h2>1 · Identificazione della sostanza</h2>
-      <p class="hint">Scrivi il nome (o il numero CAS) della sostanza: il programma la cerca <b>nell'archivio locale</b> e nel <b>database globale PubChem</b> (NIH — classificazioni GHS aggregate da ECHA e altre fonti ufficiali) e compila da solo pittogrammi, avvertenza e frasi H/P. Per il database globale usa il nome inglese (es. <i>ethanol</i>, <i>sulfuric acid</i>) o direttamente il CAS. <b>Verifica sempre con la Sezione 2 della SDS del tuo fornitore</b>: la classificazione può variare con concentrazione e fornitore.</p>
+      <p class="hint"><b>Come funziona, in 4 passi:</b> ① scrivi qui sotto il nome della sostanza e scegli dalla lista che compare — pericoli e simboli si compilano da soli; ② controlla i pericoli proposti; ③ indica che contenitore usi; ④ stampa e ritaglia l'etichetta. <br>La ricerca interroga l'<b>archivio locale</b> e il <b>database globale PubChem</b> (dati ufficiali ECHA/ONU). Funziona anche il numero CAS (il codice identificativo della sostanza, es. 67-64-1) o il nome inglese. <b>Verifica sempre con la Sezione 2 della Scheda di Sicurezza (SDS) del tuo fornitore</b>: la classificazione può variare con concentrazione e fornitore.</p>
 
-      <label class="fld">🔎 Cerca sostanza (nome o CAS) — premi Invio per cercare la voce digitata</label>
-      <input type="text" id="cercaGlobale" placeholder="es. acetone · ethanol · 7664-93-9 · sodium hydroxide…" autocomplete="off">
+      <label class="fld">🔎 Cerca la sostanza (nome o numero CAS)</label>
+      <div style="display:flex; gap:8px">
+        <input type="text" id="cercaGlobale" placeholder="es. acetone · ethanol · 7664-93-9 · sodium hydroxide…" autocomplete="off" style="flex:1">
+        <button class="nav" style="padding:10px 22px; white-space:nowrap" onclick="cercaInvio()">🔍 Cerca</button>
+      </div>
       <div class="preset-list" id="presetList"></div>
       <div class="stato-ricerca" id="statoRicerca"></div>
 
@@ -144,24 +148,42 @@
         <div class="preset-list" id="listaRecenti"></div>
       </div>
 
+      <div style="margin-top:16px; padding:14px 16px; border:1px dashed var(--bordo); border-radius:8px; background:#fafbfc" id="miscelaBox">
+        <label class="fld" style="margin-top:0">🧪 Devi etichettare una miscela di più sostanze? (es. etanolo 70 %, tamponi, soluzioni)</label>
+        <button class="nav sec" style="padding:8px 16px; margin-top:4px" id="btnMiscelaToggle" onclick="toggleMiscela()">Sì — componi la miscela passo per passo</button>
+
+        <div id="miscelaCorpo" style="display:none; margin-top:12px">
+          <ol style="margin:0 0 10px 22px; font-size:.93rem; line-height:1.7">
+            <li><b>Cerca un componente</b> nella barra di ricerca 🔎 qui in alto e scegli dalla lista: i suoi dati vengono caricati da soli.</li>
+            <li>Scrivi la <b>percentuale</b> e premi <b>Aggiungi</b>:
+              <span style="white-space:nowrap"><input type="text" id="inPercComp" placeholder="%" style="width:70px; padding:6px"> %</span>
+              <button class="nav" style="padding:6px 16px; font-size:.9rem" id="btnAggComp" onclick="aggiungiComponente()" disabled>➕ Aggiungi (prima cerca un componente)</button>
+            </li>
+            <li>Ripeti per <b>tutti gli altri componenti</b> (anche l'acqua, se vuoi che compaia sull'etichetta).</li>
+          </ol>
+          <div id="listaComponenti"></div>
+          <div id="finaleMiscela" style="display:none; margin-top:12px; padding-top:10px; border-top:1px solid var(--bordo)">
+            <label class="fld" style="margin-top:0">4. Quando hai aggiunto tutto, dai un nome alla miscela e crea l'etichetta:</label>
+            <div style="display:flex; gap:8px; flex-wrap:wrap">
+              <input type="text" id="inNomeMiscela" placeholder="es. Etanolo 70 % v/v" style="flex:1; min-width:220px">
+              <button class="nav" onclick="creaMiscela()">⚗️ Crea l'etichetta della miscela</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="row">
         <div>
           <label class="fld">Nome della sostanza / miscela *</label>
           <input type="text" id="inNome" placeholder="es. Acetone">
         </div>
         <div>
-          <label class="fld">Numero CAS</label>
+          <label class="fld">Numero CAS (codice identificativo della sostanza)</label>
           <input type="text" id="inCas" placeholder="es. 67-64-1">
         </div>
         <div>
           <label class="fld">Concentrazione / purezza</label>
           <input type="text" id="inConc" placeholder="es. ≥ 99,5 % — oppure 37 % in acqua">
-        </div>
-      </div>
-      <div class="row">
-        <div>
-          <label class="fld">Fornitore / laboratorio (nome, indirizzo, telefono)</label>
-          <textarea id="inFornitore" rows="2" placeholder="es. Laboratorio Chimico XYZ – Via Roma 1, Milano – tel. 02 1234567"></textarea>
         </div>
       </div>
       <div class="row">
@@ -178,7 +200,7 @@
           <input type="text" id="inLotto" placeholder="es. LB-2026-014">
         </div>
         <div>
-          <label class="fld">Numero / nome laboratorio (facoltativo)</label>
+          <label class="fld">Numero / nome laboratorio (identifica la provenienza del campione)</label>
           <input type="text" id="inLab" placeholder="es. Lab 12 — Chimica Organica">
         </div>
       </div>
@@ -204,13 +226,13 @@
   <section class="step" id="step2">
     <div class="card">
       <h2>2 · Classificazione di pericolo</h2>
-      <p class="hint">Seleziona i pittogrammi GHS, l'avvertenza e le frasi H (pericolo) e P (precauzione) come riportati nella SDS. Se hai cercato la sostanza allo step 1 i campi sono già precompilati.</p>
+      <p class="hint"><b>✔️ Tutto già compilato:</b> se hai scelto la sostanza allo step 1, pittogrammi, avvertenza e frasi H/P sono stati impostati automaticamente dalla classificazione ufficiale — di norma puoi passare direttamente allo step successivo. <b>Modifica le selezioni solo se necessario</b>, ad esempio se la tua concentrazione è diversa o se la SDS del tuo fornitore riporta indicazioni differenti. (Se invece hai inserito la sostanza a mano, seleziona qui i pericoli come da SDS.)</p>
       <div class="avviso verde" id="fonteBanner" style="display:none"></div>
 
       <label class="fld">Pittogrammi GHS</label>
       <div class="picto-grid" id="pictoGrid"></div>
 
-      <label class="fld">Avvertenza (signal word)</label>
+      <label class="fld">Avvertenza — la parola in evidenza sull'etichetta (signal word)</label>
       <select id="inAvvertenza">
         <option value="">— nessuna —</option>
         <option value="Pericolo">PERICOLO (Danger)</option>
@@ -347,11 +369,15 @@
 
       <div class="btnbar">
         <button class="nav sec" onclick="vaiStep(3)">← Indietro</button>
-        <span style="display:flex; gap:10px; flex-wrap:wrap">
-          <button class="nav sec" onclick="aggiungiCoda()">➕ Aggiungi alla coda</button>
+        <span style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
+          <label style="font-size:.85rem; display:flex; align-items:center; gap:6px">Copie
+            <input type="number" id="inCopie4" min="1" max="40" value="1" style="width:70px">
+          </label>
+          <button class="nav sec" onclick="aggiungiCoda()">➕ Aggiungi alla coda e nuova etichetta</button>
           <button class="nav stampa" id="btnStampa" onclick="stampaTutto()">🖨️ Stampa etichette</button>
         </span>
       </div>
+      <p class="hint" style="margin-top:12px; margin-bottom:0">ℹ️ <b>Ti serve solo questa etichetta?</b> Premi <b>Stampa</b>: in "Copie" scegli quante copie identiche stamparne. <b>Vuoi etichette di sostanze diverse sullo stesso foglio?</b> Premi <b>"Aggiungi alla coda e nuova etichetta"</b>: questa etichetta viene messa da parte e torni all'inizio per preparare la prossima; quando le hai aggiunte tutte, premi Stampa e usciranno insieme sullo stesso foglio A4.</p>
     </div>
   </section>
 </main>
@@ -489,7 +515,8 @@ const stato = {
   pictoSel: new Set(),
   hSel: new Set(),
   pSel: new Set(),
-  cid: null   // CID PubChem dell'ultima sostanza importata (per il link QR)
+  cid: null,       // CID PubChem dell'ultima sostanza importata (per il link QR)
+  componenti: []   // componenti della miscela: {nome, cas, perc, avv, picto[], h[]}
 };
 let stepCorrente = 1;
 
@@ -605,7 +632,7 @@ async function importaDaPubChem(nome){
 
     const [rg, rcas, rtit] = await Promise.all([
       fetch(PUBCHEM + "/pug_view/data/compound/" + cid + "/JSON?heading=GHS+Classification"),
-      fetch(PUBCHEM + "/pug/compound/cid/" + cid + "/xrefs/RN/JSON").catch(() => null),
+      fetch(PUBCHEM + "/pug/compound/cid/" + cid + "/synonyms/JSON").catch(() => null),
       fetch(PUBCHEM + "/pug/compound/cid/" + cid + "/property/Title/JSON").catch(() => null)
     ]);
     let titolo = "";
@@ -616,7 +643,8 @@ async function importaDaPubChem(nome){
     if(!rg.ok){
       const nb = nome === nome.toUpperCase() ? nome.charAt(0) + nome.slice(1).toLowerCase() : nome;
       document.getElementById("inNome").value = nb.charAt(0).toUpperCase() + nb.slice(1);
-      setStato("“" + esc(nome) + "” trovata nel database globale (CID " + cid + ") ma <b>senza classificazione GHS registrata</b>: probabilmente non è classificata come pericolosa. Verifica comunque sulla SDS; puoi proseguire e selezionare manualmente eventuali pericoli.");
+      setStato("“" + esc(nome) + "” trovata nel database globale (CID " + cid + ") ma <b>senza classificazione GHS registrata</b>: probabilmente non è classificata come pericolosa. Verifica comunque sulla SDS; puoi proseguire e selezionare manualmente eventuali pericoli." + (modalitaMiscela ? " Per la miscela: scrivi la percentuale nel riquadro e premi Aggiungi." : ""));
+      aggiornaBtnComp();
       return;
     }
     const record = (await rg.json()).Record;
@@ -689,9 +717,9 @@ async function importaDaPubChem(nome){
     let cas = "";
     if(rcas && rcas.ok){
       try{
-        const rn = (await rcas.json()).InformationList.Information[0].RN || [];
-        // il CAS primario è di norma il più corto tra i validi (esclude EC e CAS deprecati)
-        cas = rn.filter(x => /^\d{2,7}-\d{2}-\d$/.test(x)).sort((a,b) => a.length - b.length || a.localeCompare(b))[0] || "";
+        // nei sinonimi PubChem (ordinati per rilevanza) il primo in formato CAS è quello primario
+        const sin = (await rcas.json()).InformationList.Information[0].Synonym || [];
+        cas = sin.find(x => /^\d{2,7}-\d{2}-\d$/.test(x)) || "";
       }catch(e){}
     }
 
@@ -728,7 +756,7 @@ async function importaDaPubChem(nome){
         hExtra.map(c => esc(FRASI_H[c] || "")).join(" · ") +
         " <button class='nav' style='padding:4px 12px;font-size:.8rem;margin-left:6px' onclick='aggiungiHExtra()'>➕ aggiungi</button>" : ""));
     document.getElementById("fonteBanner").dataset.hextra = hExtra.join(",");
-    vaiStep(2);
+    dopoImport();
   }catch(e){
     setStato(e.message === "notfound"
       ? "“" + esc(nome) + "” non trovata nel database globale: prova con il nome inglese o il numero CAS."
@@ -740,6 +768,100 @@ function mostraFonte(html){
   const b = document.getElementById("fonteBanner");
   b.style.display = "block";
   b.innerHTML = html;
+}
+
+/* ---------- Miscele con più componenti ---------- */
+let modalitaMiscela = false;
+function toggleMiscela(){
+  modalitaMiscela = !modalitaMiscela;
+  document.getElementById("miscelaCorpo").style.display = modalitaMiscela ? "block" : "none";
+  document.getElementById("btnMiscelaToggle").textContent = modalitaMiscela
+    ? "✕ Annulla la miscela" : "Sì — componi la miscela passo per passo";
+  if(modalitaMiscela){
+    setStato("🧪 Modalità miscela attiva: cerca il primo componente nella barra di ricerca qui sopra.");
+    campoRicerca.focus();
+  } else {
+    stato.componenti = [];
+    aggiornaComponenti();
+    setStato("");
+  }
+  aggiornaBtnComp();
+}
+/* dopo un import: in modalità miscela resto allo step 1 e propongo di aggiungere il componente */
+function dopoImport(){
+  if(modalitaMiscela){
+    vaiStep(1);
+    aggiornaBtnComp();
+    setStato("✔️ «" + esc(val("inNome")) + "» caricato: nel riquadro miscela scrivi la percentuale e premi Aggiungi.");
+    document.getElementById("miscelaBox").scrollIntoView({behavior: "smooth", block: "center"});
+    document.getElementById("inPercComp").focus();
+  } else {
+    vaiStep(2);
+  }
+}
+function aggiornaBtnComp(){
+  const b = document.getElementById("btnAggComp");
+  const nome = val("inNome");
+  b.disabled = !nome;
+  b.textContent = nome ? "➕ Aggiungi «" + nome + "» alla miscela" : "➕ Aggiungi (prima cerca un componente)";
+}
+function creaMiscela(){
+  if(!stato.componenti.length){ setStato("Aggiungi almeno un componente prima di creare la miscela.", true); return; }
+  const nomeM = val("inNomeMiscela");
+  if(!nomeM){ setStato("Scrivi il nome della miscela (es. “Etanolo 70 % v/v”) nel riquadro qui sotto.", true); document.getElementById("inNomeMiscela").focus(); return; }
+  document.getElementById("inNome").value = nomeM;
+  modalitaMiscela = false;
+  document.getElementById("miscelaCorpo").style.display = "none";
+  document.getElementById("btnMiscelaToggle").textContent = "Sì — componi la miscela passo per passo";
+  combinaComponenti();
+}
+function aggiungiComponente(){
+  const nome = val("inNome");
+  if(!nome){ setStato("Prima cerca (o compila) la sostanza da aggiungere come componente.", true); return; }
+  stato.componenti.push({ nome, cas: val("inCas"), perc: val("inPercComp"),
+    avv: document.getElementById("inAvvertenza").value,
+    picto: [...stato.pictoSel], h: [...stato.hSel] });
+  // ripulisco i campi sostanza per il componente successivo
+  document.getElementById("inPercComp").value = "";
+  ["inNome","inCas","inConc"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("inAvvertenza").value = "";
+  stato.pictoSel = new Set(); stato.hSel = new Set(); stato.pSel = new Set(); stato.cid = null;
+  aggiornaPicto(); costruisciListaFrasi("H"); costruisciListaFrasi("P"); suggerisciP();
+  aggiornaBtnComp();
+  setStato("✅ Componente aggiunto (" + stato.componenti.length + " nella miscela). Cerca il prossimo qui sopra, oppure completa al punto 4.");
+  aggiornaComponenti();
+}
+function rimuoviComponente(i){ stato.componenti.splice(i, 1); aggiornaComponenti(); }
+function aggiornaComponenti(){
+  const box = document.getElementById("listaComponenti");
+  box.innerHTML = stato.componenti.map((c, i) =>
+    '<div class="coda-item"><span><b>' + esc(c.nome) + '</b>' +
+    (c.cas ? " · CAS " + esc(c.cas) : "") + (c.perc ? " · " + esc(c.perc) + " %" : "") +
+    (c.picto.length || c.h.length ? " · " + c.picto.length + " pittogrammi, " + c.h.length + " frasi H" : " · nessun pericolo") +
+    '</span><button title="Rimuovi" onclick="rimuoviComponente(' + i + ')">✕</button></div>').join("");
+  document.getElementById("finaleMiscela").style.display = stato.componenti.length ? "block" : "none";
+}
+function combinaComponenti(){
+  if(!stato.componenti.length) return;
+  let picto = new Set(), h = new Set(), avv = "";
+  stato.componenti.forEach(c => {
+    c.picto.forEach(p => picto.add(p));
+    c.h.forEach(x => h.add(x));
+    if(c.avv === "Pericolo") avv = "Pericolo";
+    else if(c.avv && avv !== "Pericolo") avv = "Attenzione";
+  });
+  if(picto.has("GHS06")) picto.delete("GHS07");
+  stato.pictoSel = picto;
+  stato.hSel = filtraRidondanzeH(h);
+  stato.cid = null;
+  document.getElementById("inAvvertenza").value = avv;
+  aggiornaPicto(); costruisciListaFrasi("H"); costruisciListaFrasi("P"); suggerisciP();
+  mostraFonte("⚗️ <b>Classificazione combinata</b>: unione dei pericoli di " + stato.componenti.length +
+    " componenti (ridondanze e pittogrammi incompatibili rimossi). <b>Attenzione:</b> per le miscele il CLP prevede il " +
+    "<b>metodo di calcolo</b> con limiti di concentrazione (Titolo II): l'unione è una stima <i>prudente</i> — per soluzioni " +
+    "diluite la classificazione reale può essere più lieve. Se esiste una SDS della miscela, fa fede quella. " +
+    "Deseleziona qui sotto ciò che non si applica alla tua concentrazione.");
+  vaiStep(2);
 }
 function aggiungiHExtra(){
   const b = document.getElementById("fonteBanner");
@@ -763,7 +885,7 @@ function applicaPreset(p){
   stato.pSel = new Set(p.p.filter(c => FRASI_P[c]));
   aggiornaPicto(); costruisciListaFrasi("H"); costruisciListaFrasi("P"); suggerisciP();
   mostraFonte("📗 Dati precompilati dall'<b>archivio locale</b> (classificazione tipica per " + esc(p.nome) + " " + esc(p.conc) + "). Verifica con la SDS del tuo fornitore.");
-  vaiStep(2);
+  dopoImport();
 }
 
 function costruisciPicto(){
@@ -1030,6 +1152,12 @@ function htmlEtichetta(largMm, altMm, fontPt){
   h += '<div class="et-nome" style="font-size:' + (fontPt * 1.5) + 'pt">' + esc(nome) + '</div>';
   if(cas || conc) h += '<div class="et-cas" style="font-size:' + fontPt + 'pt">' +
       (cas ? "CAS " + esc(cas) : "") + (cas && conc ? " · " : "") + esc(conc) + '</div>';
+  if(stato.componenti.length){
+    const listaComp = stato.componenti
+      .map(c => esc(c.nome) + (c.cas ? " (CAS " + esc(c.cas) + ")" : "") + (c.perc ? " " + esc(c.perc) + "%" : ""))
+      .join(", ");
+    h += '<div class="et-cas" style="font-size:' + (fontPt * 0.9) + 'pt">Contiene: ' + listaComp + '</div>';
+  }
 
   if(stato.pictoSel.size){
     h += '<div class="et-pitto">';
@@ -1051,11 +1179,9 @@ function htmlEtichetta(largMm, altMm, fontPt){
     h += '</div>';
   }
 
-  const forn = val("inFornitore");
   const cap = val("inCapacita"), un = document.getElementById("inUnita").value;
   const dataIt = id => val(id) ? val(id).split("-").reverse().join("/") : "";
   let piede = "";
-  if(forn) piede += esc(forn).replace(/\n/g, "<br>") + "<br>";
   const metaBits = [];
   if(cap) metaBits.push("Quantità: " + esc(cap) + " " + (un === "l" ? "L" : un));
   if(meta){
@@ -1130,10 +1256,12 @@ function aggiornaAnteprima(){
     avvisi.push("hai selezionato pittogrammi ma nessuna <b>frase H</b>");
   if(stato.hSel.size && !stato.pSel.size)
     avvisi.push("nessuna <b>frase P</b> selezionata: per un'etichetta CLP completa servono i consigli di prudenza");
-  if(!val("inFornitore"))
-    avvisi.push("manca il <b>fornitore/laboratorio</b>: su un'etichetta CLP completa è obbligatorio");
+  if(!val("inLab"))
+    avvisi.push("indica il <b>numero/nome del laboratorio</b> (step 1): serve a identificare la provenienza del campione");
   if(stato.pSel.size > 6)
     avvisi.push("hai selezionato più di 6 frasi P: il CLP raccomanda di limitarsi alle 6 più pertinenti");
+  if(stato.componenti.length && (stato.pictoSel.size || stato.hSel.size))
+    avvisi.push("etichetta di <b>miscela</b> (" + stato.componenti.length + " componenti): la classificazione mostrata è l'unione prudenziale dei componenti — per la classificazione formale vale il metodo di calcolo CLP o la SDS della miscela, se esiste");
   if(stato.hSel.has("EUH019") && !val("inApertura"))
     avvisi.push("sostanza che può formare <b>perossidi esplosivi</b> (EUH019): indica la <b>data di apertura</b> allo step 1 e ritesta/smaltisci secondo le regole interne (tipicamente 6–12 mesi dall'apertura)");
   if(val("inScadenza") && val("inData") && val("inScadenza") < val("inData"))
@@ -1150,7 +1278,7 @@ function aggiornaAnteprima(){
     ? '<div class="avviso">⚠️ <b>Controlli:</b><ul style="margin:6px 0 0 18px">' + avvisi.map(a => "<li>" + a + "</li>").join("") + "</ul></div>"
     : (nonPericolosa
       ? '<div class="avviso verde">✅ Sostanza senza classificazione di pericolo selezionata: etichetta di sola identificazione e tracciabilità (nome, quantità, data, operatore, laboratorio). Verifica sulla SDS che non sia effettivamente classificata.</div>'
-      : '<div class="avviso verde">✅ L\'etichetta contiene tutti gli elementi principali richiesti dal CLP (art. 17): identificatore, pittogrammi, avvertenza, frasi H, frasi P e fornitore.</div>');
+      : '<div class="avviso verde">✅ L\'etichetta contiene tutti gli elementi principali: identificatore, pittogrammi, avvertenza, frasi H, frasi P e laboratorio di provenienza.</div>');
 }
 
 /* Adattamento automatico: riduce il font, poi i testi P e H, finché il contenuto entra nel formato */
@@ -1210,34 +1338,67 @@ function etichettaCorrente(){
 
 let CODA = [];
 function aggiungiCoda(){
-  CODA.push(etichettaCorrente());
+  if(!val("inNome")){ vaiStep(1); setStato("Compila prima una sostanza: l'etichetta è vuota.", true); return; }
+  const e = etichettaCorrente();
+  CODA.push(e);
   salvaRecente();
   aggiornaCoda();
+  nuovaEtichetta();
+  setStato("✅ «" + esc(e.nome) + "» aggiunta alla coda (" + e.copie + (e.copie > 1 ? " copie" : " copia") +
+    ", totale " + CODA.reduce((s, c) => s + c.copie, 0) + " etichette sul foglio). Compila la prossima sostanza — laboratorio, operatore e contenitore sono stati mantenuti.");
+}
+function nuovaEtichetta(){
+  ["inNome","inCas","inConc","inLotto","inApertura","inScadenza","inQrTesto","inPercComp","cercaGlobale"]
+    .forEach(id => document.getElementById(id).value = "");
+  document.getElementById("inAvvertenza").value = "";
+  document.getElementById("inCopie").value = 1;
+  document.getElementById("inCopie4").value = 1;
+  stato.pictoSel = new Set(); stato.hSel = new Set(); stato.pSel = new Set();
+  stato.cid = null; stato.componenti = [];
+  modalitaMiscela = false;
+  document.getElementById("miscelaCorpo").style.display = "none";
+  document.getElementById("btnMiscelaToggle").textContent = "Sì — componi la miscela passo per passo";
+  document.getElementById("inNomeMiscela").value = "";
+  aggiornaBtnComp();
+  aggiornaPicto(); costruisciListaFrasi("H"); costruisciListaFrasi("P"); suggerisciP(); aggiornaComponenti();
+  document.getElementById("fonteBanner").style.display = "none";
+  costruisciPreset();
+  vaiStep(1);
+  campoRicerca.focus();
 }
 function rimuoviCoda(i){ CODA.splice(i, 1); aggiornaCoda(); }
+function cambiaCopieCoda(i, v){
+  CODA[i].copie = Math.max(1, Math.min(40, parseInt(v) || 1));
+  aggiornaCoda();
+}
 function aggiornaCoda(){
   const wrap = document.getElementById("codaWrap");
   const lista = document.getElementById("listaCoda");
   wrap.style.display = CODA.length ? "block" : "none";
   lista.innerHTML = CODA.map((c, i) =>
-    '<div class="coda-item"><span><b>' + esc(c.nome) + '</b> — ' + c.dim + ' × ' + c.copie +
-    ' copie</span><button title="Rimuovi" onclick="rimuoviCoda(' + i + ')">✕</button></div>').join("");
+    '<div class="coda-item"><span><b>' + esc(c.nome) + '</b> — ' + c.dim + '</span>' +
+    '<span style="display:flex; align-items:center; gap:6px">copie ' +
+    '<input type="number" min="1" max="40" value="' + c.copie + '" style="width:60px" ' +
+    'onchange="cambiaCopieCoda(' + i + ', this.value)">' +
+    '<button title="Rimuovi" onclick="rimuoviCoda(' + i + ')">✕</button></span></div>').join("");
+  const tot = CODA.reduce((s, c) => s + c.copie, 0);
   document.getElementById("btnStampa").textContent =
-    CODA.length ? "🖨️ Stampa coda (" + CODA.length + " etichette + questa)" : "🖨️ Stampa etichette";
+    CODA.length ? "🖨️ Stampa coda (" + tot + " etichette)" : "🖨️ Stampa etichette";
 }
 function stampaTutto(){
-  const items = CODA.concat([etichettaCorrente()]);
-  salvaRecente();
+  const items = CODA.concat(val("inNome") ? [etichettaCorrente()] : []);
+  if(!items.length){ vaiStep(1); setStato("Niente da stampare: compila una sostanza o aggiungi etichette alla coda.", true); return; }
+  if(val("inNome")) salvaRecente();
   const pa = document.getElementById("printArea");
   pa.innerHTML = items.map(c => Array.from({length: c.copie}, () => c.html).join("")).join("");
   window.print();
 }
 
 /* --- etichette recenti (localStorage) --- */
-const CAMPI_STATO = ["inNome","inCas","inConc","inFornitore","inData","inOperatore","inLotto","inLab","inApertura","inScadenza","inAvvertenza","inTipoCont","inCapacita","inUnita","inFormato","inCopie","inQrModo","inQrTesto"];
+const CAMPI_STATO = ["inNome","inCas","inConc","inData","inOperatore","inLotto","inLab","inApertura","inScadenza","inAvvertenza","inTipoCont","inCapacita","inUnita","inFormato","inCopie","inQrModo","inQrTesto"];
 function salvaRecente(){
   try{
-    const voce = { t: Date.now(), campi: {}, picto: [...stato.pictoSel], h: [...stato.hSel], p: [...stato.pSel], qr: document.getElementById("ckQR").checked, cid: stato.cid };
+    const voce = { t: Date.now(), campi: {}, picto: [...stato.pictoSel], h: [...stato.hSel], p: [...stato.pSel], qr: document.getElementById("ckQR").checked, cid: stato.cid, componenti: stato.componenti };
     CAMPI_STATO.forEach(id => voce.campi[id] = document.getElementById(id).value);
     if(!voce.campi.inNome.trim()) return;
     let rec = JSON.parse(localStorage.getItem("ghs-recenti") || "[]");
@@ -1284,6 +1445,8 @@ function caricaRecente(i){
     document.getElementById("ckQR").checked = !!r.qr;
     stato.pictoSel = new Set(r.picto); stato.hSel = new Set(r.h); stato.pSel = new Set(r.p);
     stato.cid = r.cid || null;
+    stato.componenti = r.componenti || [];
+    aggiornaComponenti();
     aggiornaPicto(); costruisciListaFrasi("H"); costruisciListaFrasi("P"); suggerisciP();
     mostraFonte("🕘 Etichetta caricata dalle <b>recenti</b> (" + esc(r.campi.inNome) + "). Verifica che i dati siano ancora attuali.");
     vaiStep(4);
@@ -1302,7 +1465,7 @@ function vaiStep(n){
     b.classList.toggle("done", i + 1 < n);
   });
   if(n === 3) aggiornaContenitore();
-  if(n === 4) aggiornaAnteprima();
+  if(n === 4){ document.getElementById("inCopie4").value = document.getElementById("inCopie").value; aggiornaAnteprima(); }
   window.scrollTo({top: 0, behavior: "smooth"});
 }
 
@@ -1311,12 +1474,13 @@ function vaiStep(n){
    ============================================================ */
 const campoRicerca = document.getElementById("cercaGlobale");
 campoRicerca.addEventListener("input", e => cercaTutto(e.target.value));
+function cercaInvio(){
+  const q = campoRicerca.value.trim();
+  if(q.length < 3){ setStato("Scrivi almeno 3 lettere del nome della sostanza (o il numero CAS), poi premi Cerca.", true); campoRicerca.focus(); return; }
+  importaDaPubChem(traduci(q) || q);
+}
 campoRicerca.addEventListener("keydown", e => {
-  if(e.key === "Enter" && campoRicerca.value.trim().length >= 3){
-    e.preventDefault();
-    const q = campoRicerca.value.trim();
-    importaDaPubChem(traduci(q) || q);
-  }
+  if(e.key === "Enter"){ e.preventDefault(); cercaInvio(); }
 });
 document.getElementById("filtroH").addEventListener("input", e => costruisciListaFrasi("H", e.target.value));
 document.getElementById("filtroP").addEventListener("input", e => costruisciListaFrasi("P", e.target.value));
@@ -1347,6 +1511,12 @@ document.getElementById("inTipoCont").addEventListener("change", e => {
 });
 ["inFont","ckTestiH","ckTestiP","ckMeta","inFormato","ckQR","inQrModo","inQrTesto"].forEach(id =>
   document.getElementById(id).addEventListener("input", aggiornaAnteprima));
+document.getElementById("inNome").addEventListener("input", aggiornaBtnComp);
+// il numero di copie è modificabile sia allo step 3 sia allo step 4: tengo i due campi allineati
+document.getElementById("inCopie4").addEventListener("input", e =>
+  document.getElementById("inCopie").value = e.target.value);
+document.getElementById("inCopie").addEventListener("input", e =>
+  document.getElementById("inCopie4").value = e.target.value);
 document.getElementById("inData").value = new Date().toISOString().slice(0,10);
 document.querySelectorAll("#stepper button").forEach(b =>
   b.addEventListener("click", () => vaiStep(+b.dataset.step)));
