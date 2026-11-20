@@ -582,6 +582,7 @@ function opzioniEtichetta(){
     contenuto: contenutoScelto(),
     pittoLato: $("ckPittoAuto").checked ? 0 : riquadroDaRombo(parseFloat($("inPitto").value)),
     pittoTarget: riquadroDaRombo(pm.consigliato),
+    pittoAccettabile: riquadroDaRombo(pm.assoluto),
     fontMax: parseFloat($("inFont").value) * PT,
     fontMin: 1.4,
     fontTarget: xHeightMin2028(litri) / X_HEIGHT,
@@ -627,6 +628,8 @@ function render(){
   const ctrl = controlliCompletezza();
   const html = regole.concat(ctrl).map(a => '<div class="nota-regola ' + a.tipo + '">' + a.testo + "</div>").join("");
   $("avvisiRegole").innerHTML = html;
+  const nAvv = regole.concat(ctrl).filter(a => a.tipo === "avviso").length, nInfo = regole.concat(ctrl).filter(a => a.tipo === "info").length;
+  $("contaRegole").textContent = nAvv || nInfo ? "(" + [nAvv && nAvv + " da controllare", nInfo && nInfo + " note"].filter(Boolean).join(", ") + ")" : "✅";
   // avviso sui pittogrammi accanto allo slider (step 4)
   const avP = regole.filter(a => /Pittogrammi di|solo pittogrammi/.test(a.testo));
   $("avvisiEtichetta").innerHTML = avP.map(a => '<div class="nota-regola ' + a.tipo + '">' + a.testo + "</div>").join("") +
@@ -662,7 +665,7 @@ function dimensionaAnteprima(){
   else {
     const box = $("anteprimaWrap");
     const maxW = Math.max(160, box.clientWidth - 24);
-    const maxH = window.matchMedia("(max-width: 900px)").matches ? 220 : 420;
+    const maxH = window.matchMedia("(max-width: 900px)").matches ? 140 : 420;
     const s = Math.min(maxW / w, maxH / h, 12);   // px per mm
     svg.style.width = (w * s) + "px"; svg.style.height = (h * s) + "px";
   }
@@ -981,6 +984,7 @@ function avvia(){
   document.addEventListener("input", e => { if(!e.target.closest("#dlgFoglio")) pianificaRender(); if(CAMPI_PREF.includes(e.target.id) || e.target.id === "ckRicorda") salvaPreferenze(); });
   document.addEventListener("change", pianificaRender);
 
+  if(window.matchMedia("(max-width: 900px)").matches) $("boxRegole").open = false;
   costruisciPicto();
   costruisciListaFrasi("H");
   costruisciListaFrasi("P");

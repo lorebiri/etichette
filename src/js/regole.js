@@ -96,7 +96,9 @@ function valutaRegole(ctx){
     out.push({ tipo: "avviso", testo: "⚠️ Il nome non entra per intero nel formato scelto ed è stato <b>accorciato</b>. Usa un formato più grande, la disposizione a bandiera, o un nome più breve/sigla." });
 
   // 3) dimensione etichetta
-  if(sottoMinEt && ctx.contenuto === "auto" && !(ctx.info.livello && ctx.info.livello.id >= 6)){
+  const supP = ctx.superficie && ctx.superficie.piatta;
+  const minEntra = !supP || (mw <= supP[0] + 0.5 && mh <= supP[1] + 0.5) || (mh <= supP[0] + 0.5 && mw <= supP[1] + 0.5);
+  if(sottoMinEt && (cl.obbl || minEntra) && ctx.contenuto === "auto" && !(ctx.info.livello && ctx.info.livello.id >= 6)){
     out.push({ tipo: (cl.obbl && !interno) ? "avviso" : "info",
       testo: "📏 Etichetta di " + fmt(ctx.w) + " × " + fmt(ctx.h) + " mm. Per questa capacità il CLP indica " + cl.etTesto + " mm (All. I, 1.2.1.4)." +
         (cl.obbl ? "" : " Per i contenitori fino a 3 litri la misura vale «se possibile»: su contenitori piccoli si può usare meno spazio.") });

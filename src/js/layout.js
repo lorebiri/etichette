@@ -169,7 +169,7 @@ const LIVELLI = [
 function paragrafiTesto(d, L){
   const blocchi = { _picto: d.picto };
   // intestazione
-  const testa = [par([{ t: d.nome || "—", b: true }], 1.45)];
+  const testa = [d.nome ? par([{ t: d.nome, b: true }], 1.45) : par([{ t: "Nome della sostanza", b: true }], 1.45, { colore: "#9aa3af" })];
   if(!L.minima){
     if(d.cas || d.conc) testa.push(par([{ t: [d.cas ? "CAS " + d.cas : "", d.conc].filter(Boolean).join(" · ") }], 0.95));
     if(d.contiene && !L.ridotta) testa.push(par([{ t: "Contiene: " + d.contiene }], 0.85));
@@ -240,7 +240,7 @@ function impaginaPannello(d, box, L, o){
   candidati.forEach(c => {
     const pp = n ? Math.min(c.lato / pRef, 1) : 1;
     const ff = Math.min(c.font / fRef, 1);
-    c.punti = pp * 120 + ff * 80 + c.font * 2 + (n ? c.lato * 0.3 : 0) - (c.tipo === "lato" ? 0.5 : 0) - (c.spez ? 300 : 0);
+    c.punti = pp * 120 + ff * (L.minima ? 110 : 80) + c.font * 2 + (n ? c.lato * 0.3 : 0) - (c.tipo === "lato" ? 0.5 : 0) - (c.spez ? 300 : 0);
   });
   candidati.sort((a, b) => b.punti - a.punti);
   const c = candidati[0];
@@ -377,18 +377,24 @@ function dispLato(B, n, lato, col, W, H, fMin, fMax, gap){
    ≥ 80 % del massimo ottenibile). Così si tolgono testi prima di rimpicciolire troppo i simboli. */
 function impaginaConRiduzione(d, box, o, livelloIniziale){
   const ris = [];
-  const pT = d.picto.length ? (o.pittoLato > 0 ? o.pittoLato * 0.98 : (o.pittoTarget || 10) * 0.8) : 0;
-  for(let i = livelloIniziale; i < LIVELLI.length; i++){
+  // lato accettabile: quello scelto a mano, altrimenti il minimo assoluto (rombo ≥ 10 mm per ≤ 3 l)
+  const pOk = d.picto.length ? (o.pittoLato > 0 ? o.pittoLato * 0.98 : (o.pittoAccettabile || o.pittoTarget * 0.7 || 10)) : 0;
+  const ultimoAuto = livelloIniziale >= 7 ? 7 : 6;      // "solo nome + pittogrammi" mai scelto da solo
+  for(let i = livelloIniziale; i <= ultimoAuto; i++){
     const L = LIVELLI[i];
     const r = impaginaPannello(d, box, L, o);
     if(!r) continue;
     r.livello = L;
-    if(r.lato >= pT - 1e-6) return r;
+    if(r.lato >= pOk - 1e-6) return r;
     ris.push(r);
   }
   if(ris.length){
     const maxLato = Math.max(...ris.map(r => r.lato));
-    return ris.find(r => r.lato >= maxLato * 0.8 - 1e-6);
+    return ris.find(r => r.lato >= maxLato * 0.85 - 1e-6);
+  }
+  if(ultimoAuto < 7){
+    const r = impaginaPannello(d, box, LIVELLI[7], o);
+    if(r) return Object.assign(r, { livello: LIVELLI[7] });
   }
   // ultime risorse: carattere minimo assoluto, poi nome accorciato, poi solo pittogrammi
   const L = LIVELLI[LIVELLI.length - 1];

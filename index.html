@@ -226,6 +226,25 @@ table.dimtab tr.evid{background:#eaf6ef; font-weight:600;}
 }
 .nota-regola details{margin-top:4px;}
 .nota-regola summary{cursor:pointer; color:var(--blu2); font-weight:600;}
+.box-regole{margin-top:10px;}
+.box-regole > summary{cursor:pointer; font-weight:600; font-size:.9rem; color:var(--blu);}
+.box-regole > summary span{font-weight:400; color:var(--tenue); font-size:.82rem;}
+@media (max-width: 900px){
+  .anteprima-card{max-height:46vh;}
+  .anteprima-cont{margin:4px 0;}
+  .anteprima-cont svg{width:28px; height:28px;}
+}
+@media (max-width: 640px){
+  .testata p{display:none;}
+  .testata-in{padding:10px 14px;}
+  .testata h1{font-size:1.08rem;}
+  .anteprima-wrap{padding:6px; min-height:0;}
+  .anteprima-cont span{display:none;}
+}
+@media (max-width: 640px){
+  .testata-in{flex-wrap:nowrap;}
+  .testata-azioni .btn{padding:5px 10px; font-size:.8rem;}
+}
 </style>
 </head>
 <body>
@@ -555,7 +574,10 @@ table.dimtab tr.evid{background:#eaf6ef; font-weight:600;}
         <div class="anteprima-cont" id="anteprimaCont"></div>
         <div id="anteprimaWrap" class="anteprima-wrap"></div>
         <div class="chips-info" id="infoEtichetta" aria-live="polite"></div>
-        <div id="avvisiRegole" aria-live="polite"></div>
+        <details id="boxRegole" class="box-regole" open>
+          <summary>Controlli e regole <span id="contaRegole"></span></summary>
+          <div id="avvisiRegole" aria-live="polite"></div>
+        </details>
       </div>
     </div>
   </aside>
@@ -1156,7 +1178,7 @@ const LIVELLI = [
 function paragrafiTesto(d, L){
   const blocchi = { _picto: d.picto };
   // intestazione
-  const testa = [par([{ t: d.nome || "—", b: true }], 1.45)];
+  const testa = [d.nome ? par([{ t: d.nome, b: true }], 1.45) : par([{ t: "Nome della sostanza", b: true }], 1.45, { colore: "#9aa3af" })];
   if(!L.minima){
     if(d.cas || d.conc) testa.push(par([{ t: [d.cas ? "CAS " + d.cas : "", d.conc].filter(Boolean).join(" · ") }], 0.95));
     if(d.contiene && !L.ridotta) testa.push(par([{ t: "Contiene: " + d.contiene }], 0.85));
@@ -1227,7 +1249,7 @@ function impaginaPannello(d, box, L, o){
   candidati.forEach(c => {
     const pp = n ? Math.min(c.lato / pRef, 1) : 1;
     const ff = Math.min(c.font / fRef, 1);
-    c.punti = pp * 120 + ff * 80 + c.font * 2 + (n ? c.lato * 0.3 : 0) - (c.tipo === "lato" ? 0.5 : 0) - (c.spez ? 300 : 0);
+    c.punti = pp * 120 + ff * (L.minima ? 110 : 80) + c.font * 2 + (n ? c.lato * 0.3 : 0) - (c.tipo === "lato" ? 0.5 : 0) - (c.spez ? 300 : 0);
   });
   candidati.sort((a, b) => b.punti - a.punti);
   const c = candidati[0];
@@ -1364,18 +1386,24 @@ function dispLato(B, n, lato, col, W, H, fMin, fMax, gap){
    ≥ 80 % del massimo ottenibile). Così si tolgono testi prima di rimpicciolire troppo i simboli. */
 function impaginaConRiduzione(d, box, o, livelloIniziale){
   const ris = [];
-  const pT = d.picto.length ? (o.pittoLato > 0 ? o.pittoLato * 0.98 : (o.pittoTarget || 10) * 0.8) : 0;
-  for(let i = livelloIniziale; i < LIVELLI.length; i++){
+  // lato accettabile: quello scelto a mano, altrimenti il minimo assoluto (rombo ≥ 10 mm per ≤ 3 l)
+  const pOk = d.picto.length ? (o.pittoLato > 0 ? o.pittoLato * 0.98 : (o.pittoAccettabile || o.pittoTarget * 0.7 || 10)) : 0;
+  const ultimoAuto = livelloIniziale >= 7 ? 7 : 6;      // "solo nome + pittogrammi" mai scelto da solo
+  for(let i = livelloIniziale; i <= ultimoAuto; i++){
     const L = LIVELLI[i];
     const r = impaginaPannello(d, box, L, o);
     if(!r) continue;
     r.livello = L;
-    if(r.lato >= pT - 1e-6) return r;
+    if(r.lato >= pOk - 1e-6) return r;
     ris.push(r);
   }
   if(ris.length){
     const maxLato = Math.max(...ris.map(r => r.lato));
-    return ris.find(r => r.lato >= maxLato * 0.8 - 1e-6);
+    return ris.find(r => r.lato >= maxLato * 0.85 - 1e-6);
+  }
+  if(ultimoAuto < 7){
+    const r = impaginaPannello(d, box, LIVELLI[7], o);
+    if(r) return Object.assign(r, { livello: LIVELLI[7] });
   }
   // ultime risorse: carattere minimo assoluto, poi nome accorciato, poi solo pittogrammi
   const L = LIVELLI[LIVELLI.length - 1];
@@ -1579,7 +1607,9 @@ function valutaRegole(ctx){
     out.push({ tipo: "avviso", testo: "⚠️ Il nome non entra per intero nel formato scelto ed è stato <b>accorciato</b>. Usa un formato più grande, la disposizione a bandiera, o un nome più breve/sigla." });
 
   // 3) dimensione etichetta
-  if(sottoMinEt && ctx.contenuto === "auto" && !(ctx.info.livello && ctx.info.livello.id >= 6)){
+  const supP = ctx.superficie && ctx.superficie.piatta;
+  const minEntra = !supP || (mw <= supP[0] + 0.5 && mh <= supP[1] + 0.5) || (mh <= supP[0] + 0.5 && mw <= supP[1] + 0.5);
+  if(sottoMinEt && (cl.obbl || minEntra) && ctx.contenuto === "auto" && !(ctx.info.livello && ctx.info.livello.id >= 6)){
     out.push({ tipo: (cl.obbl && !interno) ? "avviso" : "info",
       testo: "📏 Etichetta di " + fmt(ctx.w) + " × " + fmt(ctx.h) + " mm. Per questa capacità il CLP indica " + cl.etTesto + " mm (All. I, 1.2.1.4)." +
         (cl.obbl ? "" : " Per i contenitori fino a 3 litri la misura vale «se possibile»: su contenitori piccoli si può usare meno spazio.") });
@@ -2397,6 +2427,7 @@ function opzioniEtichetta(){
     contenuto: contenutoScelto(),
     pittoLato: $("ckPittoAuto").checked ? 0 : riquadroDaRombo(parseFloat($("inPitto").value)),
     pittoTarget: riquadroDaRombo(pm.consigliato),
+    pittoAccettabile: riquadroDaRombo(pm.assoluto),
     fontMax: parseFloat($("inFont").value) * PT,
     fontMin: 1.4,
     fontTarget: xHeightMin2028(litri) / X_HEIGHT,
@@ -2442,6 +2473,8 @@ function render(){
   const ctrl = controlliCompletezza();
   const html = regole.concat(ctrl).map(a => '<div class="nota-regola ' + a.tipo + '">' + a.testo + "</div>").join("");
   $("avvisiRegole").innerHTML = html;
+  const nAvv = regole.concat(ctrl).filter(a => a.tipo === "avviso").length, nInfo = regole.concat(ctrl).filter(a => a.tipo === "info").length;
+  $("contaRegole").textContent = nAvv || nInfo ? "(" + [nAvv && nAvv + " da controllare", nInfo && nInfo + " note"].filter(Boolean).join(", ") + ")" : "✅";
   // avviso sui pittogrammi accanto allo slider (step 4)
   const avP = regole.filter(a => /Pittogrammi di|solo pittogrammi/.test(a.testo));
   $("avvisiEtichetta").innerHTML = avP.map(a => '<div class="nota-regola ' + a.tipo + '">' + a.testo + "</div>").join("") +
@@ -2477,7 +2510,7 @@ function dimensionaAnteprima(){
   else {
     const box = $("anteprimaWrap");
     const maxW = Math.max(160, box.clientWidth - 24);
-    const maxH = window.matchMedia("(max-width: 900px)").matches ? 220 : 420;
+    const maxH = window.matchMedia("(max-width: 900px)").matches ? 140 : 420;
     const s = Math.min(maxW / w, maxH / h, 12);   // px per mm
     svg.style.width = (w * s) + "px"; svg.style.height = (h * s) + "px";
   }
@@ -2796,6 +2829,7 @@ function avvia(){
   document.addEventListener("input", e => { if(!e.target.closest("#dlgFoglio")) pianificaRender(); if(CAMPI_PREF.includes(e.target.id) || e.target.id === "ckRicorda") salvaPreferenze(); });
   document.addEventListener("change", pianificaRender);
 
+  if(window.matchMedia("(max-width: 900px)").matches) $("boxRegole").open = false;
   costruisciPicto();
   costruisciListaFrasi("H");
   costruisciListaFrasi("P");

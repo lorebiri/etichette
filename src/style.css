@@ -216,3 +216,22 @@ table.dimtab tr.evid{background:#eaf6ef; font-weight:600;}
 }
 .nota-regola details{margin-top:4px;}
 .nota-regola summary{cursor:pointer; color:var(--blu2); font-weight:600;}
+.box-regole{margin-top:10px;}
+.box-regole > summary{cursor:pointer; font-weight:600; font-size:.9rem; color:var(--blu);}
+.box-regole > summary span{font-weight:400; color:var(--tenue); font-size:.82rem;}
+@media (max-width: 900px){
+  .anteprima-card{max-height:46vh;}
+  .anteprima-cont{margin:4px 0;}
+  .anteprima-cont svg{width:28px; height:28px;}
+}
+@media (max-width: 640px){
+  .testata p{display:none;}
+  .testata-in{padding:10px 14px;}
+  .testata h1{font-size:1.08rem;}
+  .anteprima-wrap{padding:6px; min-height:0;}
+  .anteprima-cont span{display:none;}
+}
+@media (max-width: 640px){
+  .testata-in{flex-wrap:nowrap;}
+  .testata-azioni .btn{padding:5px 10px; font-size:.8rem;}
+}

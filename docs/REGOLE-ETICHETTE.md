@@ -289,7 +289,18 @@ Indicazioni utili per contenitori piccoli:
 
 ## 7. Cosa fa l'app
 
-<!-- APP -->
+L'app applica queste regole così (sono **avvisi**, non blocchi: si può sempre stampare).
+
+| Cosa | Come lo calcola l'app |
+|---|---|
+| Etichetta minima | Dalla capacità indicata allo step 3, secondo la tabella 1.3 (52 × 74, 74 × 105, 105 × 148, 148 × 210 mm). Per ≤ 3 litri la misura vale «se possibile»: se il contenitore è più piccolo, l'app propone la misura che ci sta e lo spiega. |
+| Pittogrammi | Misurati come **lato del rombo** (non del quadrato che lo contiene). Minimo: 10 mm (se possibile 16 mm) fino a 3 l, poi 23 / 32 / 46 mm. In automatico l'app cerca di arrivare al valore consigliato; se l'utente li rimpicciolisce sotto il minimo compare un avviso che spiega quando è ammesso. |
+| Testo | Il corpo più grande che entra (fino al massimo scelto), interlinea 120 %. Mostra l'altezza della «x»: avviso sotto 1,2 mm (riferimento ECHA) e promemoria del valore che varrà dal 1° gennaio 2028 (1,2 / 1,4 / 1,8 / 2,0 mm). |
+| Spazio insufficiente | Prima rimpicciolisce il testo; poi, nell'ordine: frasi P solo codici → senza QR → frasi H e P solo codici → senza dati di laboratorio → senza frasi P → ridotta (nome, CAS, pittogrammi, avvertenza, codici H). Lo segnala sempre. «Solo pittogrammi + nome» si ottiene solo scegliendolo. Nessun testo esce mai dai bordi (verificato dai test automatici). |
+| Uso interno / fornitura | Allo step 3 si indica se il contenitore resta in laboratorio (D.Lgs. 81/2008: bastano pittogrammi e nome) o va fornito ad altri (CLP completo, con le esenzioni dell'art. 29 e dell'All. I, 1.5): gli avvisi cambiano di conseguenza. |
+| Contenitori piccoli | Propone l'etichetta **avvolgente** (fronte: nome e pittogrammi; retro: frasi e dati) o **a bandiera** (due metà identiche che si incollano attorno al tubo) e ricorda di mettere l'etichetta completa sull'imballaggio esterno (scatola/rack). |
+| Altre verifiche | Precedenza dei pittogrammi (GHS06 esclude GHS07; GHS05 e GHS07), più di 6 frasi P, mancanza di avvertenza o frasi H, data di apertura per le sostanze che formano perossidi (EUH019), lunghezza del testo nel QR. |
+
 
 ---
 
