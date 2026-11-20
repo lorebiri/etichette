@@ -1,0 +1,25 @@
+name: Test
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Installa le dipendenze di test
+        run: npm install --no-audit --no-fund
+      - name: Installa Chromium per Playwright
+        run: npx playwright install --with-deps chromium
+      - name: index.html aggiornato rispetto a src/ + test
+        run: npm test

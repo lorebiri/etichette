@@ -1,0 +1,14 @@
+{
+  "name": "etichette-ghs",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Generatore di etichette GHS/CLP (pagina statica, nessuna dipendenza a runtime)",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node build.mjs --check && node --test --test-concurrency=1 "tests/*.test.js""
+  },
+  "devDependencies": {
+    "jsqr": "^1.4.0",
+    "playwright": "1.63.0"
+  }
+}

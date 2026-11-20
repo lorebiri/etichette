@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Generatore di etichette GHS/CLP per contenitori di laboratorio: pittogrammi ufficiali, frasi H/P, formati per provette, vial, flaconi, stampa su fogli A4 e PDF.">
+<meta name="theme-color" content="#1d3557">
+<title>Generatore Etichette GHS/CLP</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 3 61 32 32 61 3 32z' fill='%23fff' stroke='%23e3262b' stroke-width='6'/%3E%3Cpath d='M29 18h6l-1 20h-4zM32 42a4 4 0 1 1 0 8 4 4 0 0 1 0-8z'/%3E%3C/svg%3E">
+<style>/*@CSS*/</style>
+</head>
+<body>
+
+<a class="salta" href="#contenuto">Vai al contenuto</a>
+<header class="testata">
+  <div class="testata-in">
+    <div>
+      <h1>🏷️ Generatore Etichette GHS / CLP</h1>
+      <p>Etichette per sostanze e miscele pericolose — dal flacone da 1 litro alla eppendorf — secondo il Reg. (CE) 1272/2008 (CLP)</p>
+    </div>
+    <div class="testata-azioni">
+      <button type="button" class="btn chiaro" id="btnNuova" title="Svuota i campi della sostanza e ricomincia">＋ Nuova etichetta</button>
+    </div>
+  </div>
+</header>
+
+<div class="pagina" id="contenuto">
+  <main class="colonna-passi">
+    <nav class="stepper" id="stepper" aria-label="Passi">
+      <button type="button" data-step="1"><span class="num">1</span><span class="lbl">Sostanza</span></button>
+      <button type="button" data-step="2"><span class="num">2</span><span class="lbl">Pericoli</span></button>
+      <button type="button" data-step="3"><span class="num">3</span><span class="lbl">Contenitore</span></button>
+      <button type="button" data-step="4"><span class="num">4</span><span class="lbl">Etichetta e stampa</span></button>
+    </nav>
+
+    <!-- ================= STEP 1 ================= -->
+    <section class="step" id="step1" aria-labelledby="t1">
+      <div class="card">
+        <h2 id="t1">1 · Sostanza</h2>
+        <p class="hint">Scrivi il <b>nome</b>, il <b>numero CAS</b> o la <b>formula</b> e scegli dalla lista: pittogrammi, avvertenza e frasi H/P si compilano da soli. L'etichetta si aggiorna dal vivo nel riquadro <b>Anteprima</b>. La ricerca usa l'archivio locale (funziona anche senza rete) e il database pubblico <b>PubChem</b> (dati ECHA/ONU).</p>
+
+        <label class="fld" for="cercaGlobale">🔎 Cerca la sostanza (nome, CAS o formula)</label>
+        <div class="riga-cerca">
+          <input type="search" id="cercaGlobale" placeholder="es. acetone · 7664-93-9 · H2SO4 · etanolo…" autocomplete="off" aria-describedby="statoRicerca" aria-controls="presetList">
+          <button type="button" class="btn" id="btnCerca">Cerca</button>
+        </div>
+        <div class="preset-list" id="presetList" role="listbox" aria-label="Risultati della ricerca"></div>
+        <div class="stato-ricerca" id="statoRicerca" aria-live="polite"></div>
+
+        <div id="recentiWrap" hidden>
+          <div class="fld">🕘 Etichette recenti (salvate su questo dispositivo)</div>
+          <div class="preset-list" id="listaRecenti"></div>
+        </div>
+
+        <div class="riquadro" id="miscelaBox">
+          <div class="fld" style="margin-top:0">🧪 Devi etichettare una miscela di più sostanze? (es. etanolo 70 %, tamponi, soluzioni)</div>
+          <button type="button" class="btn sec piccolo" id="btnMiscelaToggle">Sì — componi la miscela passo per passo</button>
+          <div id="miscelaCorpo" hidden>
+            <ol class="passi-miscela">
+              <li><b>Cerca un componente</b> nella barra di ricerca qui in alto e scegli dalla lista: i suoi dati vengono caricati da soli.</li>
+              <li>Scrivi la <b>percentuale</b> e premi <b>Aggiungi</b>:
+                <span class="nowrap"><input type="text" id="inPercComp" placeholder="%" aria-label="Percentuale del componente" style="width:70px"> %</span>
+                <button type="button" class="btn piccolo" id="btnAggComp" disabled>➕ Aggiungi (prima cerca un componente)</button>
+              </li>
+              <li>Ripeti per <b>tutti gli altri componenti</b> (anche l'acqua, se vuoi che compaia sull'etichetta).</li>
+            </ol>
+            <div id="listaComponenti"></div>
+            <div id="finaleMiscela" hidden>
+              <label class="fld" for="inNomeMiscela" style="margin-top:0">4. Quando hai aggiunto tutto, dai un nome alla miscela e crea l'etichetta:</label>
+              <div class="riga-cerca">
+                <input type="text" id="inNomeMiscela" placeholder="es. Etanolo 70 % v/v">
+                <button type="button" class="btn" id="btnCreaMiscela">⚗️ Crea l'etichetta della miscela</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="griglia3">
+          <div><label class="fld" for="inNome">Nome della sostanza / miscela *</label><input type="text" id="inNome" placeholder="es. Acetone"></div>
+          <div><label class="fld" for="inCas">Numero CAS</label><input type="text" id="inCas" placeholder="es. 67-64-1" inputmode="numeric"></div>
+          <div><label class="fld" for="inConc">Concentrazione / purezza</label><input type="text" id="inConc" placeholder="es. ≥ 99,5 % — oppure 37 % in acqua"></div>
+        </div>
+
+        <details class="riquadro" id="boxLab" open>
+          <summary>🏛️ Dati di laboratorio (facoltativi, stampati in fondo all'etichetta)</summary>
+          <div class="griglia3">
+            <div><label class="fld" for="inLab">Laboratorio</label><input type="text" id="inLab" placeholder="es. Lab 12 — Chimica Organica"></div>
+            <div><label class="fld" for="inOperatore">Responsabile / operatore</label><input type="text" id="inOperatore" placeholder="es. M. Rossi"></div>
+            <div><label class="fld" for="inEnte">Ente e recapito</label><input type="text" id="inEnte" placeholder="es. CNR-ISTITUTO, tel. 050 000000"></div>
+            <div><label class="fld" for="inData">Data di preparazione</label><input type="date" id="inData"></div>
+            <div><label class="fld" for="inApertura">Data di apertura</label><input type="date" id="inApertura"></div>
+            <div><label class="fld" for="inScadenza">Scadenza / ritestare entro</label><input type="date" id="inScadenza"></div>
+            <div><label class="fld" for="inLotto">Lotto / riferimento interno</label><input type="text" id="inLotto" placeholder="es. LB-2026-014"></div>
+          </div>
+          <label class="check"><input type="checkbox" id="ckRicorda" checked> Ricorda laboratorio, responsabile ed ente su questo dispositivo</label>
+          <p class="nota">Apertura e scadenza sono consigliate per le sostanze che formano perossidi (es. eteri, EUH019): l'app ti avvisa se mancano.</p>
+        </details>
+
+        <div class="btnbar"><span></span><button type="button" class="btn" data-vai="2">Avanti → Pericoli</button></div>
+      </div>
+    </section>
+
+    <!-- ================= STEP 2 ================= -->
+    <section class="step" id="step2" aria-labelledby="t2">
+      <div class="card">
+        <h2 id="t2">2 · Pericoli</h2>
+        <p class="hint"><b>✔️ Di solito è già tutto compilato</b> dalla classificazione ufficiale. Modifica solo se serve: per esempio se la tua concentrazione è diversa o se la scheda di sicurezza (SDS) del fornitore riporta indicazioni diverse.</p>
+        <div class="avviso verde" id="fonteBanner" hidden></div>
+
+        <div class="fld">Pittogrammi GHS</div>
+        <div class="picto-grid" id="pictoGrid" role="group" aria-label="Pittogrammi"></div>
+
+        <label class="fld" for="inAvvertenza">Avvertenza (la parola in evidenza)</label>
+        <select id="inAvvertenza">
+          <option value="">— nessuna —</option>
+          <option value="Pericolo">PERICOLO (Danger)</option>
+          <option value="Attenzione">ATTENZIONE (Warning)</option>
+        </select>
+
+        <label class="fld" for="filtroH">Indicazioni di pericolo — frasi H / EUH <span class="contatore" id="contaH"></span></label>
+        <input type="search" id="filtroH" placeholder="filtra per codice o testo… (es. H225, infiammabile)">
+        <div class="phrase-box" id="listaH"></div>
+
+        <label class="fld" for="filtroP">Consigli di prudenza — frasi P <span class="contatore" id="contaP"></span></label>
+        <input type="search" id="filtroP" placeholder="filtra per codice o testo… (es. P280, guanti)">
+        <div class="phrase-box" id="listaP"></div>
+
+        <div class="avviso blu" id="consiglioP" hidden></div>
+
+        <div class="btnbar">
+          <button type="button" class="btn sec" data-vai="1">← Indietro</button>
+          <button type="button" class="btn" data-vai="3">Avanti → Contenitore</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= STEP 3 ================= -->
+    <section class="step" id="step3" aria-labelledby="t3">
+      <div class="card">
+        <h2 id="t3">3 · Contenitore</h2>
+        <p class="hint">Scegli il contenitore: l'app propone formato e disposizione dell'etichetta adatti alla sua superficie (la zona <span class="campione-et"></span> nei disegni). Le misure sono quelle tipiche: puoi correggerle.</p>
+
+        <div class="chips" id="gruppiCont" role="tablist" aria-label="Categorie di contenitori"></div>
+        <div class="cont-grid" id="contGrid" role="radiogroup" aria-label="Contenitori"></div>
+
+        <div class="riquadro" id="dettaglioCont">
+          <div class="griglia3">
+            <div>
+              <label class="fld" for="inCapacita">Capacità nominale</label>
+              <div class="riga-cerca">
+                <input type="number" id="inCapacita" min="0" step="any" value="1000">
+                <select id="inUnita" aria-label="Unità di misura" style="width:90px">
+                  <option value="ml" selected>ml</option><option value="l">L</option><option value="g">g</option><option value="kg">kg</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="fld" for="inUso">A cosa serve l'etichetta?</label>
+              <select id="inUso">
+                <option value="interno" selected>Contenitore di laboratorio (uso interno)</option>
+                <option value="fornitura">Sostanza da fornire ad altri (fuori dal laboratorio)</option>
+              </select>
+            </div>
+            <div>
+              <label class="fld" for="inLayout">Disposizione</label>
+              <select id="inLayout">
+                <option value="auto">Automatica (la migliore per il formato)</option>
+                <option value="orizzontale">Orizzontale</option>
+                <option value="verticale">Verticale</option>
+                <option value="avvolgente">Avvolgente (attorno a provette e vial)</option>
+                <option value="bandiera">A bandiera (per tubi molto sottili)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="fld">Formato dell'etichetta</div>
+          <div class="formati" id="formatiProposti" role="radiogroup" aria-label="Formati proposti"></div>
+          <div class="griglia4" id="boxMisure">
+            <div><label class="fld" for="inW">Larghezza (mm)</label><input type="number" id="inW" min="8" max="420" step="0.5" value="74"></div>
+            <div><label class="fld" for="inH">Altezza (mm)</label><input type="number" id="inH" min="6" max="420" step="0.5" value="52"></div>
+            <div class="solo-tubo"><label class="fld" for="inDiam">Diametro del tubo (mm)</label><input type="number" id="inDiam" min="3" max="200" step="0.1" value="10.8"></div>
+            <div><label class="fld" for="inStandard">Formati standard</label>
+              <select id="inStandard"><option value="">— scegli —</option><option value="60x38">38 × 60 mm (mini)</option><option value="74x52">52 × 74 mm</option><option value="105x74">74 × 105 mm</option><option value="148x105">105 × 148 mm (A6)</option><option value="210x148">148 × 210 mm (A5)</option><option value="38x60">60 × 38 mm (mini verticale)</option><option value="52x74">74 × 52 mm (verticale)</option></select></div>
+            <div class="solo-bandiera"><label class="fld" for="inFlag">Larghezza di ogni bandiera (mm)</label><input type="number" id="inFlag" min="8" max="100" step="0.5" value="22"></div>
+          </div>
+          <p class="nota" id="notaMisure"></p>
+        </div>
+
+        <div class="avviso" id="noteContenitore"></div>
+
+        <details class="riquadro">
+          <summary>📏 Dimensioni minime dell'etichetta secondo il CLP</summary>
+          <table class="dimtab" id="tabDim"></table>
+          <p class="nota">Fonte: Reg. (CE) 1272/2008, Allegato I, punto 1.2.1 (come modificato dal Reg. (UE) 2024/2865). Dettagli in <a href="docs/REGOLE-ETICHETTE.md" target="_blank" rel="noopener">REGOLE-ETICHETTE.md</a>.</p>
+        </details>
+
+        <div class="btnbar">
+          <button type="button" class="btn sec" data-vai="2">← Indietro</button>
+          <button type="button" class="btn" data-vai="4">Avanti → Etichetta e stampa</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= STEP 4 ================= -->
+    <section class="step" id="step4" aria-labelledby="t4">
+      <div class="card">
+        <h2 id="t4">4 · Etichetta e stampa</h2>
+
+        <div class="fld">Cosa mettere sull'etichetta</div>
+        <div class="scelte" role="radiogroup" aria-label="Contenuto dell'etichetta">
+          <label class="scelta"><input type="radio" name="contenuto" value="auto" checked><span><b>Completa</b><small>tutti gli elementi; se lo spazio non basta il testo si rimpicciolisce e poi si accorcia da solo</small></span></label>
+          <label class="scelta"><input type="radio" name="contenuto" value="ridotta"><span><b>Ridotta</b><small>nome, CAS, pittogrammi, avvertenza e codici H</small></span></label>
+          <label class="scelta"><input type="radio" name="contenuto" value="minima"><span><b>Solo pittogrammi + nome</b><small>per contenitori piccoli</small></span></label>
+        </div>
+
+        <div class="griglia2">
+          <div>
+            <label class="fld" for="inPitto">Dimensione pittogrammi: <output id="outPitto">automatica</output></label>
+            <div class="riga-slider">
+              <label class="check"><input type="checkbox" id="ckPittoAuto" checked> automatica</label>
+              <input type="range" id="inPitto" min="4" max="60" step="0.5" value="16" disabled aria-describedby="minPitto">
+            </div>
+            <p class="nota" id="minPitto"></p>
+          </div>
+          <div>
+            <label class="fld" for="inFont">Testo massimo: <output id="outFont">9 pt</output></label>
+            <input type="range" id="inFont" min="5" max="16" step="0.5" value="9">
+            <p class="nota">Il testo usa la dimensione più grande che entra, fino a questo massimo.</p>
+          </div>
+        </div>
+
+        <div class="fld">Mostra sull'etichetta</div>
+        <div class="checks">
+          <label class="check"><input type="checkbox" id="ckTestiH" checked> testo completo delle frasi H</label>
+          <label class="check"><input type="checkbox" id="ckTestiP" checked> testo completo delle frasi P</label>
+          <label class="check"><input type="checkbox" id="ckMeta" checked> dati di laboratorio</label>
+          <label class="check"><input type="checkbox" id="ckQuantita" checked> quantità</label>
+          <label class="check"><input type="checkbox" id="ckQR"> QR code</label>
+          <label class="check"><input type="checkbox" id="ckBordo" checked> bordo di ritaglio</label>
+        </div>
+        <div class="griglia2" id="boxQR" hidden>
+          <div>
+            <label class="fld" for="inQrModo">Contenuto del QR</label>
+            <select id="inQrModo">
+              <option value="dati" selected>📄 Dati etichetta (nome · CAS · lotto · data · lab)</option>
+              <option value="sds">📑 Ricerca diretta della SDS in PDF dal CAS</option>
+              <option value="cas">🔢 Solo numero CAS</option>
+              <option value="link">🔗 Link alla scheda di sicurezza (SDS) o testo personalizzato</option>
+              <option value="pubchem">🌐 Pagina sicurezza su PubChem (da CAS)</option>
+            </select>
+          </div>
+          <div>
+            <label class="fld" for="inQrTesto">Link SDS o testo (per "personalizzato")</label>
+            <input type="url" id="inQrTesto" placeholder="https://… (es. SDS del tuo fornitore)">
+          </div>
+        </div>
+
+        <div id="avvisiEtichetta" aria-live="polite"></div>
+
+        <h3 class="sotto">🖨️ Stampa</h3>
+        <div class="griglia3">
+          <div>
+            <label class="fld" for="inFoglio">Foglio</label>
+            <select id="inFoglio"></select>
+          </div>
+          <div>
+            <label class="fld" for="inCopie">Copie di questa etichetta</label>
+            <input type="number" id="inCopie" min="1" max="500" value="1">
+          </div>
+          <div class="solo-griglia">
+            <label class="fld" for="inInizio">Inizia dalla posizione n°</label>
+            <input type="number" id="inInizio" min="1" max="200" value="1">
+          </div>
+        </div>
+        <div class="solo-griglia">
+          <label class="check"><input type="checkbox" id="ckAdattaCella" checked> adatta l'etichetta alla misura delle etichette del foglio</label>
+        </div>
+        <details class="riquadro" id="boxFoglioPers">
+          <summary>⚙️ Misure del foglio e calibrazione della stampante</summary>
+          <div class="griglia4">
+            <div class="solo-pers"><label class="fld" for="fgCol">Colonne</label><input type="number" id="fgCol" min="1" max="12" value="2"></div>
+            <div class="solo-pers"><label class="fld" for="fgRow">Righe</label><input type="number" id="fgRow" min="1" max="40" value="7"></div>
+            <div class="solo-pers"><label class="fld" for="fgW">Larghezza etichetta (mm)</label><input type="number" id="fgW" min="5" step="0.1" value="99.1"></div>
+            <div class="solo-pers"><label class="fld" for="fgH">Altezza etichetta (mm)</label><input type="number" id="fgH" min="5" step="0.1" value="38.1"></div>
+            <div class="solo-pers"><label class="fld" for="fgTop">Margine superiore (mm)</label><input type="number" id="fgTop" min="0" step="0.1" value="15.1"></div>
+            <div class="solo-pers"><label class="fld" for="fgLeft">Margine sinistro (mm)</label><input type="number" id="fgLeft" min="0" step="0.1" value="4.7"></div>
+            <div class="solo-pers"><label class="fld" for="fgGx">Spazio orizzontale (mm)</label><input type="number" id="fgGx" min="0" step="0.1" value="2.5"></div>
+            <div class="solo-pers"><label class="fld" for="fgGy">Spazio verticale (mm)</label><input type="number" id="fgGy" min="0" step="0.1" value="0"></div>
+            <div><label class="fld" for="fgDx">Spostamento orizzontale (mm)</label><input type="number" id="fgDx" step="0.1" value="0"></div>
+            <div><label class="fld" for="fgDy">Spostamento verticale (mm)</label><input type="number" id="fgDy" step="0.1" value="0"></div>
+            <div><label class="fld" for="fgMarg">Margine pagina, ritaglio libero (mm)</label><input type="number" id="fgMarg" min="0" max="30" step="0.5" value="8"></div>
+          </div>
+          <p class="nota">Se la stampa risulta spostata rispetto alle etichette adesive, correggi con gli spostamenti (valori negativi = verso sinistra/alto). Stampa sempre con <b>scala 100 %</b> (disattiva "adatta alla pagina").</p>
+        </details>
+
+        <div id="codaWrap" hidden>
+          <div class="fld">📋 Coda di stampa (etichette diverse sullo stesso foglio)</div>
+          <div id="listaCoda"></div>
+        </div>
+        <p class="nota" id="riepilogoFoglio"></p>
+
+        <div class="btnbar">
+          <button type="button" class="btn sec" data-vai="3">← Indietro</button>
+          <span class="gruppo-btn">
+            <button type="button" class="btn sec" id="btnCoda">➕ Aggiungi alla coda e nuova etichetta</button>
+            <button type="button" class="btn sec" id="btnAnteprimaFoglio">👁 Anteprima foglio</button>
+            <button type="button" class="btn rosso" id="btnStampa">🖨️ Stampa</button>
+          </span>
+        </div>
+        <div class="btnbar esporta">
+          <span class="fld" style="margin:0">⬇️ Esporta:</span>
+          <span class="gruppo-btn">
+            <button type="button" class="btn sec piccolo" id="btnPng">PNG etichetta (600 dpi)</button>
+            <button type="button" class="btn sec piccolo" id="btnPdf">PDF etichetta</button>
+            <button type="button" class="btn sec piccolo" id="btnPdfFoglio">PDF foglio A4</button>
+            <button type="button" class="btn sec piccolo" id="btnSvg">SVG vettoriale</button>
+          </span>
+        </div>
+        <p class="nota">Consiglio: dopo averla applicata, ricopri l'etichetta con nastro adesivo trasparente (o usa etichette plastificate): resiste a schizzi, solventi e condensa.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- ================= ANTEPRIMA SEMPRE VISIBILE ================= -->
+  <aside class="colonna-anteprima" id="pannelloAnteprima" aria-label="Anteprima dell'etichetta">
+    <div class="card anteprima-card">
+      <div class="anteprima-testa">
+        <h2>Anteprima</h2>
+        <div class="zoom" role="group" aria-label="Zoom anteprima">
+          <button type="button" class="btn sec mini" id="btnZoomReale" aria-pressed="false" title="Mostra a grandezza reale (circa)">1:1</button>
+          <button type="button" class="btn sec mini" id="btnZoomAdatta" aria-pressed="true" title="Ingrandisci per vedere i dettagli">Adatta</button>
+        </div>
+        <button type="button" class="btn sec mini apri-mobile" id="btnApriAnteprima" aria-expanded="true">▾</button>
+      </div>
+      <div class="anteprima-corpo" id="anteprimaCorpo">
+        <div class="anteprima-cont" id="anteprimaCont"></div>
+        <div id="anteprimaWrap" class="anteprima-wrap"></div>
+        <div class="chips-info" id="infoEtichetta" aria-live="polite"></div>
+        <div id="avvisiRegole" aria-live="polite"></div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<div class="dialogo" id="dlgFoglio" hidden role="dialog" aria-modal="true" aria-labelledby="dlgFoglioT">
+  <div class="dialogo-in">
+    <div class="anteprima-testa"><h2 id="dlgFoglioT">Anteprima del foglio</h2><button type="button" class="btn sec mini" id="btnChiudiFoglio">✕ Chiudi</button></div>
+    <div id="foglioPreview" class="foglio-preview"></div>
+  </div>
+</div>
+
+<div id="printArea" aria-hidden="true"></div>
+
+<footer class="piede">
+  <p><b>Avvertenza:</b> questo strumento aiuta a compilare l'etichetta ma <b>non garantisce la conformità legale</b>. La classificazione corretta della sostanza o miscela è responsabilità di chi la usa e va verificata sulla Scheda di Sicurezza (SDS, sezione 2) e sul Regolamento CLP (CE) n. 1272/2008. Regole e fonti: <a href="docs/REGOLE-ETICHETTE.md" target="_blank" rel="noopener">REGOLE-ETICHETTE.md</a>. I pittogrammi sono quelli ufficiali GHS (ONU, pubblico dominio), in formato vettoriale: l'app funziona anche senza connessione. Nessun dato viene inviato a terzi, tranne le ricerche su PubChem.</p>
+  <p class="firma">💡 Idea sviluppata da <b>Lorenzo Birindelli</b></p>
+</footer>
+
+<script>/*@JS*/</script>
+</body>
+</html>
